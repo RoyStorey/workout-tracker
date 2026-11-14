@@ -35,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh">
         <TzSync />
         <Nav user={user} />
-        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-5 sm:px-6 sm:pb-20 sm:pt-8">{children}</main>
+        <main className="mx-auto w-full max-w-[112rem] px-4 pb-28 pt-5 sm:px-6 sm:pb-20 sm:pt-8 lg:px-10 2xl:px-14">{children}</main>
         {user && <BottomNav username={user.username} />}
       </body>
     </html>

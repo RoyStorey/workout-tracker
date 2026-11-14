@@ -9,15 +9,16 @@ import {
   challengeMembers,
   challengeSquads,
   getChallengeBySlug,
-  isTeamMember,
-  type PublicUser,
+  teamsForUser,
 } from "@/lib/queries";
 import { computeStats, type Stats } from "@/lib/stats";
-import { addDays, diffDays, eachDay, fmtDay, fmtRange, weekday } from "@/lib/dates";
+import { addDays, diffDays, fmtDay, fmtRange, weekday } from "@/lib/dates";
 import { cx, fmtCompact, fmtNum, fmtPct, plural } from "@/lib/format";
 import {
   createSquad,
   deleteEntry,
+  enterTeam,
+  withdrawTeam,
   joinChallenge,
   leaveChallenge,
   regenerateChallengeInvite,
@@ -35,6 +36,7 @@ import { QuickLog } from "@/components/quick-log";
 import { PaceNote, ProgressBar, SquadDot, Stat, StatusTag, squadColor } from "@/components/ui";
 import { TrashIcon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
+import { Spreadsheet } from "@/components/spreadsheet";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string; board?: string }> };
 
@@ -59,8 +61,13 @@ export default async function ChallengePage({ params, searchParams }: Props) {
   const today = await getToday();
   const members = challengeMembers(c.id);
   const entries = challengeEntries(c.id);
-  const battle = c.kind === "battle";
+  const teamsMode = c.kind === "teams";
+  const battle = c.kind === "battle" || teamsMode; // any group-vs-group format
   const squads = battle ? challengeSquads(c.id) : [];
+  const groupWord = teamsMode ? "team" : "squad";
+  // Past 8 groups, colour can't carry identity reliably, so fall back to one neutral hue.
+  const many = squads.length > 8;
+  const colorOf = (slot: number) => (many ? "var(--series-1)" : squadColor(slot));
   const shared = c.goal_type === "shared" && !battle;
   const me = user ? members.find((m) => m.id === user.id) : undefined;
   const isMember = !!me;
@@ -105,7 +112,12 @@ export default async function ChallengePage({ params, searchParams }: Props) {
   const invitePath = c.visibility === "private" ? `/join/${c.invite_code}` : `/c/${c.slug}`;
   const owner = c.owner_id ? (db().prepare("SELECT username, display_name FROM users WHERE id = ?").get(c.owner_id) as { username: string; display_name: string } | undefined) : undefined;
   const team = c.team_id ? (db().prepare("SELECT name, slug FROM teams WHERE id = ?").get(c.team_id) as { name: string; slug: string } | undefined) : undefined;
-  const canJoin = !isMember && (c.visibility === "public" || k === c.invite_code || isTeamMember(c.team_id, user?.id) || isOwner);
+  // Reaching this page already passed the access check, so anyone here may join.
+  const canJoin = !isMember;
+  const myTeams = user && teamsMode ? teamsForUser(user.id) : [];
+  const entered = new Set(squads.map((s) => s.team_id));
+  const joinable = teamsMode ? board_.filter((s) => myTeams.some((t) => t.id === s.team_id)) : [];
+  const enterable = teamsMode && group.status !== "finished" ? myTeams.filter((t) => t.owner_id === user?.id && !entered.has(t.id)) : [];
   const unit = c.unit;
 
   const timeLine =
@@ -118,7 +130,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
           : "Finished";
 
   const goalLine = battle
-    ? `Squad battle · most ${unit} ${average ? "per member" : ""} wins`
+    ? `${teamsMode ? "Team vs team" : "Squad battle"} · most ${unit}${average ? " per member" : ""} wins`
     : c.target
       ? `${fmtNum(c.target)} ${unit} ${shared ? "together" : "each"}`
       : `Most ${unit} wins`;
@@ -130,7 +142,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
       <header>
         <div className="flex flex-wrap items-center gap-2">
           <StatusTag status={group.status} reached={!battle && !!groupTarget && group.reached} />
-          {battle && <span className="tag">Squad battle</span>}
+          {battle && <span className="tag">{teamsMode ? "Team vs team" : "Squad battle"}</span>}
           {c.visibility === "private" && <span className="tag">Private</span>}
           {team && <Link href={`/t/${team.slug}`} className="tag hover:border-ink hover:text-ink">{team.name}</Link>}
         </div>
@@ -166,7 +178,50 @@ export default async function ChallengePage({ params, searchParams }: Props) {
           </form>
         </div>
       )}
-      {battle && (canJoin || (isMember && !mySquad)) && (
+      {teamsMode && !mySquad && (
+        <section className="card p-5">
+          <div className="display text-2xl uppercase">{joinable.length ? "Compete for your team" : "Get your team in"}</div>
+          <p className="text-sm text-muted">
+            {!user
+              ? "Sign up, join a team, then your team's leader enters it here."
+              : `${plural(squads.length, "team")} entered so far. Team leaders enter their whole team; members of entered teams can compete.`}
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {joinable.map((s) => (
+              <form key={s.id} action={joinChallenge.bind(null, c.id, k ?? null, s.id)}>
+                <button className="flex w-full items-center gap-3 rounded-md border border-line-strong p-3 text-left transition hover:border-ink">
+                  {!many && <SquadDot slot={s.slot} size={14} />}
+                  <span className="flex-1 font-semibold">{s.name}</span>
+                  <span className="text-sm font-semibold">Compete →</span>
+                </button>
+              </form>
+            ))}
+            {enterable.map((t) => (
+              <form key={t.id} action={enterTeam.bind(null, c.id, t.id, k ?? null)}>
+                <button className="flex w-full items-center gap-3 rounded-md bg-primary p-3 text-left text-primary-ink transition hover:opacity-90">
+                  <span className="flex-1">
+                    <span className="block font-semibold">Enter {t.name}</span>
+                    <span className="block text-xs opacity-75">Signs up all {plural(t.member_count, "member")} of your team</span>
+                  </span>
+                  <span className="text-sm font-semibold">→</span>
+                </button>
+              </form>
+            ))}
+          </div>
+          {!user ? (
+            <Link href={`/signup?next=${encodeURIComponent(`/c/${c.slug}${k ? `?k=${k}` : ""}`)}`} className="btn-primary mt-2">Sign up</Link>
+          ) : (
+            joinable.length === 0 &&
+            enterable.length === 0 && (
+              <p className="mt-1 text-sm">
+                None of your teams are in this one.{" "}
+                <Link href="/teams" className="link">Start or join a team</Link>, and if you lead it, come back here to enter it.
+              </p>
+            )
+          )}
+        </section>
+      )}
+      {c.kind === "battle" && (canJoin || (isMember && !mySquad)) && (
         <section className="card p-5">
           <div className="display text-2xl uppercase">Pick your squad</div>
           <p className="text-sm text-muted">{user ? "Your reps count toward the squad you join." : "You'll sign up first, then land back here."}</p>
@@ -192,7 +247,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-8">
           {/* ---------- Status + log ---------- */}
           {battle ? (
@@ -202,7 +257,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                 <span className="text-xs text-muted">{average ? `${unit} per member` : `total ${unit}`}</span>
               </div>
               {board_.length === 0 ? (
-                <p className="p-5 text-sm text-muted">No squads yet.</p>
+                <p className="p-5 text-sm text-muted">{teamsMode ? "No teams have entered yet. Send the link to team leaders." : "No squads yet."}</p>
               ) : (
                 <ol>
                   {board_.map((s, i) => {
@@ -211,22 +266,30 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                       <li key={s.id} className={cx("border-b border-line px-5 py-4 last:border-0", s.id === mySquad?.id && "bg-surface-2/60")}>
                         <div className="flex items-center gap-3">
                           <span className="display w-6 text-2xl text-faint">{i + 1}</span>
-                          <SquadDot slot={s.slot} size={12} />
+                          {!many && <SquadDot slot={s.slot} size={12} />}
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-semibold">
-                              {s.name}
-                              {s.id === mySquad?.id && <span className="ml-2 text-xs font-semibold text-muted">Your squad</span>}
+                              {s.team_slug ? <Link href={`/t/${s.team_slug}`} className="hover:underline">{s.name}</Link> : s.name}
+                              {s.id === mySquad?.id && <span className="ml-2 text-xs font-semibold text-muted">Your {groupWord}</span>}
                             </div>
                             <div className="text-xs text-muted">
                               {plural(s.members.length, "member")}
                               {group.status === "active" && <> · {fmtNum(s.todayTotal)} today</>}
                               {average && <> · {fmtNum(s.total)} total</>}
+                              {teamsMode && s.entries.length === 0 && (s.team_owner === user?.id || isOwner) && (
+                                <>
+                                  {" · "}
+                                  <ConfirmButton action={withdrawTeam.bind(null, c.id, s.id)} message={`Withdraw ${s.name}? Its members will be taken out of this challenge.`} className="inline underline underline-offset-2 hover:text-bad">
+                                    Withdraw
+                                  </ConfirmButton>
+                                </>
+                              )}
                             </div>
                           </div>
                           <div className="display text-4xl">{fmtNum(s.score, average ? 1 : 0)}</div>
                         </div>
                         <div className="mt-3 pl-9">
-                          <ProgressBar value={s.score / lead} color={squadColor(s.slot)} />
+                          <ProgressBar value={s.score / lead} color={colorOf(s.slot)} />
                         </div>
                       </li>
                     );
@@ -323,8 +386,9 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             </section>
           )}
 
+          <div className="grid gap-8 2xl:grid-cols-2">
           {/* ---------- Standings ---------- */}
-          <section>
+          <section className="min-w-0">
             <div className="mb-3 flex items-end justify-between gap-3">
               <h2 className="display text-2xl uppercase">{battle ? "Top athletes" : "Standings"}</h2>
               <div className="flex text-xs font-semibold">
@@ -382,8 +446,8 @@ export default async function ChallengePage({ params, searchParams }: Props) {
 
           {/* ---------- Chart ---------- */}
           {group.series.length > 1 && group.status !== "upcoming" && (
-            <section>
-              <h2 className="display mb-3 text-2xl uppercase">{battle ? "Race" : "Progress"}</h2>
+            <section className="min-w-0">
+              <h2 className="display mb-3 text-2xl uppercase">{battle ? (many ? "Race · top 5" : "Race") : "Progress"}</h2>
               <div className="card p-4">
                 {battle ? (
                   <BattleChart
@@ -391,7 +455,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                     unit={unit}
                     today={today}
                     average={average}
-                    lines={board_.map((s) => {
+                    lines={(many ? board_.slice(0, 5) : board_).map((s, idx) => {
                       const firstDay = group.series[0].day;
                       let run = s.entries.filter((e) => e.day < firstDay).reduce((a, e) => a + e.amount, 0);
                       const perDay = new Map<string, number>();
@@ -400,7 +464,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                       return {
                         id: s.id,
                         name: s.name,
-                        slot: s.slot,
+                        slot: many ? idx : s.slot,
                         values: group.series.map((p) => {
                           if (p.cumulative == null) return null;
                           run += perDay.get(p.day) ?? 0;
@@ -423,6 +487,8 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             </section>
           )}
 
+          </div>
+
           {/* ---------- Numbers ---------- */}
           {group.status !== "upcoming" && (
             <section>
@@ -431,8 +497,17 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             </section>
           )}
 
-          {members.length > 1 && group.daysElapsed > 0 && (
-            <DailyGrid entries={entries} members={members} start={c.start_date} end={group.series.at(-1)?.day ?? today} today={today} />
+          {group.daysElapsed > 0 && members.length > 0 && (
+            <Spreadsheet
+              entries={entries}
+              members={members}
+              squads={squads}
+              start={c.start_date}
+              end={c.end_date}
+              today={today}
+              unit={unit}
+              exportHref={(t) => `/c/${c.slug}/export?type=${t}${k ? `&k=${encodeURIComponent(k)}` : ""}`}
+            />
           )}
 
           {myRecent.length > 0 && (
@@ -467,11 +542,24 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             </div>
           </section>
 
+          {teamsMode && mySquad && enterable.length > 0 && (
+            <section className="card p-4">
+              <div className="text-sm font-semibold">You lead other teams</div>
+              <div className="mt-2 space-y-2">
+                {enterable.map((t) => (
+                  <form key={t.id} action={enterTeam.bind(null, c.id, t.id, k ?? null)}>
+                    <SubmitButton className="btn-ghost h-9 w-full text-xs">Enter {t.name}</SubmitButton>
+                  </form>
+                ))}
+              </div>
+            </section>
+          )}
+
           {isOwner && (
             <section>
               <h2 className="display mb-3 text-2xl uppercase">Organizer</h2>
               <div className="card divide-y divide-line">
-                {battle && members.length > 0 && (
+                {c.kind === "battle" && members.length > 0 && (
                   <div className="p-4">
                     <div className="mb-2 text-sm font-semibold">Squad assignments</div>
                     {unassigned.length > 0 && <p className="mb-2 text-xs text-bad">{plural(unassigned.length, "person", "people")} without a squad.</p>}
@@ -493,7 +581,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                     </ul>
                   </div>
                 )}
-                {battle && squads.length < 8 && (
+                {c.kind === "battle" && squads.length < 8 && (
                   <form action={createSquad.bind(null, c.id, k ?? null)} className="flex gap-2 p-4">
                     <input name="name" className="input h-9 text-sm" placeholder="New squad name" maxLength={30} required />
                     <SubmitButton className="btn-ghost h-9 shrink-0 text-xs">Add</SubmitButton>
@@ -569,60 +657,5 @@ function NumbersGrid({ s, unit }: { s: Stats; unit: string }) {
         </div>
       ))}
     </div>
-  );
-}
-
-/** The old-school spreadsheet: one row per day, one column per person. */
-function DailyGrid({
-  entries,
-  members,
-  start,
-  end,
-  today,
-}: {
-  entries: { user_id: number; amount: number; day: string }[];
-  members: PublicUser[];
-  start: string;
-  end: string;
-  today: string;
-}) {
-  const last = end < today ? end : today;
-  if (last < start) return null;
-  const days = eachDay(start, last).reverse().slice(0, 120);
-  const cell = new Map<string, number>();
-  for (const e of entries) cell.set(`${e.day}|${e.user_id}`, (cell.get(`${e.day}|${e.user_id}`) ?? 0) + e.amount);
-  return (
-    <details className="card p-4">
-      <summary className="cursor-pointer list-none font-semibold [&::-webkit-details-marker]:hidden">
-        Spreadsheet view <span className="font-normal text-muted">· every day, every person</span>
-      </summary>
-      <div className="mt-3 max-h-96 overflow-auto">
-        <table className="tnum w-full text-right text-sm">
-          <thead className="sticky top-0 bg-surface text-xs text-muted">
-            <tr>
-              <th className="py-1.5 pr-3 text-left font-semibold">Day</th>
-              {members.map((m) => (
-                <th key={m.id} className="px-2 font-semibold">{m.display_name.split(" ")[0]}</th>
-              ))}
-              <th className="pl-2 font-semibold">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {days.map((d) => {
-              const vals = members.map((m) => cell.get(`${d}|${m.id}`) ?? 0);
-              return (
-                <tr key={d} className="border-t border-line">
-                  <td className="py-1.5 pr-3 text-left text-muted">{fmtDay(d, { weekday: "short", month: "short", day: "numeric" })}</td>
-                  {vals.map((v, i) => (
-                    <td key={i} className={cx("px-2", v === 0 && "text-faint")}>{v ? fmtNum(v) : "·"}</td>
-                  ))}
-                  <td className="pl-2 font-semibold">{fmtNum(vals.reduce((a, b) => a + b, 0))}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </details>
   );
 }

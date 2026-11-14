@@ -11,11 +11,12 @@ import {
 } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { challengeStatus, computeStats } from "@/lib/stats";
-import { diffDays } from "@/lib/dates";
+import { addDays, diffDays, fmtDay, timeAgo } from "@/lib/dates";
 import { fmtCompact, fmtNum, fmtPct, plural } from "@/lib/format";
 import { APP_NAME } from "@/lib/config";
 import { ChallengeCardView } from "@/components/challenge-card";
-import { Feed } from "@/components/feed";
+import { Avatar } from "@/components/avatar";
+import { JoinByCode } from "@/components/join-code";
 import { QuickLog } from "@/components/quick-log";
 import { LiveUpdates } from "@/components/live-updates";
 import { Empty, PaceNote, ProgressBar, SectionHead, SquadDot } from "@/components/ui";
@@ -36,22 +37,46 @@ async function Dashboard({ user }: { user: User }) {
   const finished = mine.filter((c) => challengeStatus(c, today) === "finished");
   const all = entriesForChallenges(active.map((c) => c.id));
   const teams = teamsForUser(user.id);
-  const feed = friendsFeed(user.id, 12);
+  const feed = friendsFeed(user.id, 8);
+  // This-week summary for the header strip
+  const recentDays = db()
+    .prepare("SELECT day, COUNT(*) AS sets FROM entries WHERE user_id = ? AND day >= ? GROUP BY day")
+    .all(user.id, addDays(today, -400)) as { day: string; sets: number }[];
+  const daySet = new Set(recentDays.map((d) => d.day));
+  const weekSets = recentDays.filter((d) => d.day > addDays(today, -7)).reduce((a, d) => a + d.sets, 0);
+  const weekDays = recentDays.filter((d) => d.day > addDays(today, -7)).length;
+  let streak = 0;
+  for (let d = daySet.has(today) ? today : addDays(today, -1); daySet.has(d); d = addDays(d, -1)) streak++;
+  const others = [...upcoming, ...finished].slice(0, 7);
   const dateLine = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: tz }).format(new Date());
 
   return (
     <div className="space-y-10">
       <LiveUpdates ids={[...active, ...upcoming].map((c) => c.id)} />
-      <header>
-        <div className="eyebrow">{dateLine}</div>
-        <h1 className="display mt-1 text-5xl uppercase sm:text-6xl">Today</h1>
+      <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
+        <div>
+          <div className="eyebrow">{dateLine}</div>
+          <h1 className="display mt-1 text-5xl uppercase sm:text-6xl">Today</h1>
+        </div>
+        <dl className="grid grid-cols-3 divide-x divide-line border-y border-line sm:border-y-0">
+          {([
+            [weekSets, "sets this week"],
+            [`${weekDays}/7`, "days active"],
+            [streak, streak === 1 ? "day streak" : "day streak"],
+          ] as const).map(([n, label]) => (
+            <div key={label} className="px-4 py-2 first:pl-0 sm:px-6">
+              <dd className="display text-4xl">{n}</dd>
+              <dt className="eyebrow mt-0.5 whitespace-nowrap">{label}</dt>
+            </div>
+          ))}
+        </dl>
       </header>
 
       {active.length > 0 ? (
-        <section className="grid gap-4 md:grid-cols-2">
+        <section className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))]">
           {active.map((c) => {
-            const shared = c.goal_type === "shared" && c.kind !== "battle";
-            const battle = c.kind === "battle";
+            const battle = c.kind === "battle" || c.kind === "teams";
+            const shared = c.goal_type === "shared" && !battle;
             const ce = all.filter((e) => e.challenge_id === c.id);
             const myEntries = ce.filter((e) => e.user_id === user.id);
             const stats = shared ? computeStats(ce, c, c.target, today) : computeStats(myEntries, c, battle ? null : c.target, today);
@@ -75,16 +100,21 @@ async function Dashboard({ user }: { user: User }) {
               const rank = scores.findIndex((s) => s.id === mySquadId);
               squadLine =
                 rank >= 0 ? (
-                  <span className="flex items-center gap-1.5">
-                    <SquadDot slot={scores[rank].slot} /> <b>{scores[rank].name}</b> is {ordinal(rank + 1)} of {scores.length}
+                  <span>
+                    {scores.length <= 8 && (
+                      <span className="mr-1.5 inline-block align-middle">
+                        <SquadDot slot={scores[rank].slot} />
+                      </span>
+                    )}
+                    <b>{scores[rank].name}</b> is {ordinal(rank + 1)} of {scores.length}
                     {rank > 0 && (
                       <span className="text-muted">
-                        , {fmtNum(scores[rank - 1].score - scores[rank].score, 0)} behind {scores[rank - 1].name}
+                        {`, ${fmtNum(scores[rank - 1].score - scores[rank].score, 0)} behind ${scores[rank - 1].name}`}
                       </span>
                     )}
                   </span>
                 ) : (
-                  <span className="text-bad">Pick a squad to start logging</span>
+                  <span className="text-bad">{c.kind === "teams" ? "Join with your team to start logging" : "Pick a squad to start logging"}</span>
                 );
             }
 
@@ -94,7 +124,7 @@ async function Dashboard({ user }: { user: User }) {
                   <div className="min-w-0">
                     <Link href={`/c/${c.slug}`} className="block truncate text-lg font-bold hover:underline">{c.title}</Link>
                     <div className="truncate text-xs text-muted">
-                      {c.exercise} · {battle ? "Squad battle" : shared ? "Team goal" : "Your goal"}
+                      {c.exercise} · {c.kind === "teams" ? "Team vs team" : battle ? "Squad battle" : shared ? "Team goal" : "Your goal"}
                       {c.end_date && <> · {plural(diffDays(today, c.end_date) + 1, "day")} left</>}
                     </div>
                   </div>
@@ -148,45 +178,75 @@ async function Dashboard({ user }: { user: User }) {
         </Empty>
       )}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-10">
-          {upcoming.length > 0 && (
-            <section>
-              <SectionHead title="Coming up" />
-              <div className="grid gap-3 sm:grid-cols-2">{upcoming.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
-            </section>
+      <div className="grid items-start gap-8 md:grid-cols-2 xl:grid-cols-3">
+        <section className="min-w-0">
+          <SectionHead title="Your challenges">
+            <Link href="/explore" className="text-sm font-semibold text-muted hover:text-ink">Find more →</Link>
+          </SectionHead>
+          {others.length ? (
+            <ul className="card divide-y divide-line">
+              {others.map((c) => {
+                const st = challengeStatus(c, today);
+                return (
+                  <li key={c.id}>
+                    <Link href={`/c/${c.slug}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2/60">
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold">{c.title}</span>
+                        <span className="block truncate text-xs text-muted">
+                          {c.exercise} · {plural(c.member_count, "member")}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-right text-xs text-muted">
+                        {st === "upcoming" ? `Starts in ${plural(diffDays(today, c.start_date), "day")}` : <>Ended {fmtDay(c.end_date!)}</>}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">Upcoming and finished challenges show up here.</p>
           )}
-          {finished.length > 0 && (
-            <section>
-              <SectionHead title="Past" />
-              <div className="grid gap-3 sm:grid-cols-2">{finished.slice(0, 6).map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
-            </section>
-          )}
-          <section>
-            <SectionHead title="Your teams">
-              <Link href="/teams/new" className="text-sm font-semibold text-muted hover:text-ink">+ New team</Link>
-            </SectionHead>
-            {teams.length ? (
-              <div className="card divide-y divide-line">
-                {teams.map((t) => (
-                  <Link key={t.id} href={`/t/${t.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-surface-2/60">
-                    <span className="font-semibold">{t.name}</span>
-                    <span className="text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted">
-                A team keeps your regular crew together across challenges. <Link href="/teams" className="link">Find or start one</Link>.
-              </p>
-            )}
-          </section>
-        </div>
-        <section>
-          <SectionHead title="Activity" />
-          <div className="card px-4">
-            <Feed items={feed} viewerId={user.id} showChallenge />
+        </section>
+
+        <section className="min-w-0">
+          <SectionHead title="Teams">
+            <Link href="/teams/new" className="text-sm font-semibold text-muted hover:text-ink">+ New team</Link>
+          </SectionHead>
+          <div className="card divide-y divide-line">
+            {teams.map((t) => (
+              <Link key={t.id} href={`/t/${t.slug}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2/60">
+                <span className="truncate font-semibold">{t.name}</span>
+                <span className="shrink-0 text-xs text-muted">{plural(t.member_count, "member")}</span>
+              </Link>
+            ))}
+            <div className="p-4">
+              <div className="mb-2 text-xs font-semibold text-muted">{teams.length ? "Join another team" : "Join a team with an invite code"}</div>
+              <JoinByCode compact />
+            </div>
           </div>
+        </section>
+
+        <section className="min-w-0 md:col-span-2 xl:col-span-1">
+          <SectionHead title="Recent activity" />
+          {feed.length ? (
+            <ul className="card divide-y divide-line">
+              {feed.map((it) => (
+                <li key={it.id} className="flex items-center gap-2.5 px-4 py-2.5 text-sm">
+                  <Avatar user={it.user} size={24} />
+                  <span className="min-w-0 flex-1 truncate">
+                    <b>{it.user.id === user.id ? "You" : it.user.display_name.split(" ")[0]}</b>{" "}
+                    <span className="tnum font-semibold">+{fmtNum(it.amount)}</span> <span className="text-muted">{it.unit}</span>
+                    <span className="text-muted"> · </span>
+                    <Link href={`/c/${it.challenge_slug}`} className="text-muted hover:text-ink hover:underline">{it.challenge_title}</Link>
+                  </span>
+                  <span className="shrink-0 text-xs text-faint">{timeAgo(it.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">When you or your crew log, it shows up here.</p>
+          )}
         </section>
       </div>
     </div>
@@ -260,7 +320,7 @@ async function Landing() {
           <SectionHead title="Live now">
             <Link href="/explore" className="text-sm font-semibold text-muted hover:text-ink">See all →</Link>
           </SectionHead>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{pub.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{pub.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
         </section>
       )}
     </div>

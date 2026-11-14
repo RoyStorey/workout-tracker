@@ -86,7 +86,7 @@ export default async function ProfilePage({ params }: Props) {
       <section>
         <SectionHead title="Lifetime" />
         {totals.length ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {totals.map((t) => (
               <div key={t.exercise_key + t.unit} className="card p-4">
                 <div className="eyebrow">{t.exercise}</div>
@@ -110,7 +110,7 @@ export default async function ProfilePage({ params }: Props) {
       {earned.size > 0 && (
         <section>
           <SectionHead title="Badges" />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-6">
             {[...earned.values()].map((b) => (
               <div key={b.id} className="card flex items-center gap-3 p-3">
                 <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden className="shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -133,11 +133,11 @@ export default async function ProfilePage({ params }: Props) {
           <Empty title="No visible challenges" />
         ) : (
           <div className="space-y-6">
-            {live.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{live.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>}
+            {live.length > 0 && <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{live.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>}
             {past.length > 0 && (
               <div>
                 <div className="mb-2 text-sm text-muted">Past</div>
-                <div className="grid gap-3 sm:grid-cols-2">{past.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+                <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{past.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
               </div>
             )}
           </div>

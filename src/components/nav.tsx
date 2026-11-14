@@ -28,7 +28,7 @@ export function Logo() {
 export function Nav({ user }: { user: User | null }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-8 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-[112rem] items-center gap-8 px-4 sm:px-6 lg:px-10 2xl:px-14">
         <Logo />
         {user && (
           <nav className="hidden items-center gap-6 sm:flex">

@@ -164,7 +164,7 @@ const teams = tx(() =>
     const owner = members[0];
     const res = db
       .prepare("INSERT INTO teams (slug, name, description, visibility, invite_code, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(`${slugify(name)}-${code(4)}`, name, description, visibility, code(), owner.id, Date.now() - int(30, 120) * DAY);
+      .run(crypto.randomBytes(4).toString("hex"), name, description, visibility, code(), owner.id, Date.now() - int(30, 120) * DAY);
     const id = Number(res.lastInsertRowid);
     members.forEach((m, i) =>
       db.prepare("INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)").run(
@@ -199,6 +199,7 @@ const CHALLENGES = [
   { title: "December Dip Challenge", exercise: "Dips", unit: "reps", goal: "individual", target: 2000, start: 5, end: 35, vis: "public", members: 5, quick: "10,15,25", inc: 1, setRange: [10, 30] },
   { title: "Squadron Pushup Battle", exercise: "Pushups", unit: "reps", goal: "shared", target: null, start: -12, end: 18, vis: "public", members: 18, quick: "10,20,25,50", inc: 1, setRange: [15, 50], battle: { scoring: "average", squads: ["Alpha", "Bravo", "Charlie", "Delta"] } },
   { title: "Office Plank Wars", exercise: "Plank", unit: "minutes", goal: "shared", target: null, start: -7, end: 14, vis: "private", team: "Office Warriors", quick: "1,2,3", inc: 0.5, setRange: [1, 4], battle: { scoring: "total", squads: ["Sales", "Engineering"] } },
+  { title: "Inter-Team Pushup League", exercise: "Pushups", unit: "reps", goal: "shared", target: null, start: -9, end: 21, vis: "public", quick: "10,20,25,50", inc: 1, setRange: [15, 50], league: { scoring: "average", teams: ["Garage Gym Crew", "Office Warriors", "Run Club 5:30am", "Night Owls"] } },
   { title: "Holiday Mile-a-Day", exercise: "Running", unit: "miles", goal: "shared", target: 250, start: 12, end: 42, vis: "public", team: "Run Club 5:30am", quick: "1,2,3", inc: 0.1, setRange: [1, 4] },
 ];
 const JOIN_TITLES = new Set(["Squadron Pushup Battle", "November Pushup Mission", "Squad 25K Squats", "Pull-up Showdown", "Plank-a-thon", "October Pushup Classic"]);
@@ -211,7 +212,16 @@ const made = tx(() =>
   CHALLENGES.map((c) => {
     const start = addDays(today, c.start);
     const end = c.end == null ? null : addDays(today, c.end);
-    let members = c.team ? [...team(c.team).members] : sample(demoUsers, c.members);
+    let members = c.team ? [...team(c.team).members] : c.league ? [] : sample(demoUsers, c.members);
+    // Team league: everyone on an entered team competes for the first of their teams in the list.
+    const leagueOf = new Map();
+    if (c.league)
+      for (const name of c.league.teams)
+        for (const m of team(name).members)
+          if (!leagueOf.has(m.id)) {
+            leagueOf.set(m.id, name);
+            members.push(m);
+          }
     if (joiner && JOIN_TITLES.has(c.title) && !members.some((m) => m.real)) members.push(users.at(-1));
     const owner = members.find((m) => !m.real) ?? demoUsers[0];
     const teamId = c.team ? team(c.team).id : null;
@@ -223,13 +233,25 @@ const made = tx(() =>
       )
       .run(
         `${slugify(c.title)}-${code(4)}`, c.title, "", c.exercise, c.unit, c.goal, c.target, start, end,
-        c.vis, code(), owner.id, teamId, c.quick, dayAtTime(start, 8) - 3 * DAY, c.battle ? "battle" : "standard", c.battle?.scoring ?? "total",
+        c.vis, code(), owner.id, teamId, c.quick, dayAtTime(start, 8) - 3 * DAY, c.battle ? "battle" : c.league ? "teams" : "standard", c.battle?.scoring ?? c.league?.scoring ?? "total",
       );
     const cid = Number(res.lastInsertRowid);
     const squadIds = (c.battle?.squads ?? []).map((name, slot) =>
       Number(db.prepare("INSERT INTO squads (challenge_id, name, slot, created_at) VALUES (?, ?, ?, ?)").run(cid, name, slot, Date.now()).lastInsertRowid),
     );
+    const leagueSquads = new Map(
+      (c.league?.teams ?? []).map((name, slot) => [
+        name,
+        Number(
+          db.prepare("INSERT INTO squads (challenge_id, name, slot, created_at, team_id) VALUES (?, ?, ?, ?, ?)").run(cid, `#team-${team(name).id}`, slot, Date.now(), team(name).id).lastInsertRowid,
+        ),
+      ]),
+    );
     members.forEach((m, i) => {
+      if (c.league) {
+        db.prepare("INSERT INTO challenge_members (challenge_id, user_id, joined_at, squad_id) VALUES (?, ?, ?, ?)").run(cid, m.id, dayAtTime(start, 7) - int(1, 5) * DAY, leagueSquads.get(leagueOf.get(m.id)));
+        return;
+      }
       // Uneven squads on purpose, so "average per member" scoring matters.
       const pattern = [0, 1, 0, 2, 3, 0, 1, 3, 0, 2, 1, 0, 3];
       const squad = squadIds.length ? squadIds[pattern[i % pattern.length] % squadIds.length] : null;

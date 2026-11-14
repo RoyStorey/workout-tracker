@@ -20,12 +20,12 @@ export type Challenge = {
   team_id: number | null;
   quick_adds: string;
   created_at: number;
-  kind: "standard" | "battle";
+  kind: "standard" | "battle" | "teams";
   scoring: "total" | "average";
   open_squads: number;
 };
 
-export type Squad = { id: number; name: string; slot: number };
+export type Squad = { id: number; name: string; slot: number; team_id: number | null; team_slug: string | null; team_owner: number | null };
 
 export type Team = {
   id: number;
@@ -77,7 +77,22 @@ export function canViewChallenge(c: Challenge, userId: number | undefined, key?:
   if (c.visibility === "public") return true;
   if (key && key === c.invite_code) return true;
   if (userId && c.owner_id === userId) return true;
-  return isChallengeMember(c.id, userId) || isTeamMember(c.team_id, userId);
+  return isChallengeMember(c.id, userId) || isTeamMember(c.team_id, userId) || onEnteredTeam(c.id, userId);
+}
+
+/** In a team-vs-team challenge, members of any entered team can see it. */
+export function onEnteredTeam(challengeId: number, userId: number | undefined) {
+  if (!userId) return false;
+  return !!db()
+    .prepare("SELECT 1 FROM squads s JOIN team_members tm ON tm.team_id = s.team_id WHERE s.challenge_id = ? AND tm.user_id = ?")
+    .get(challengeId, userId);
+}
+
+/** Challenges a team has been entered into. */
+export function challengesEnteredBy(teamId: number) {
+  return db()
+    .prepare(`${CARD_SELECT} WHERE c.id IN (SELECT challenge_id FROM squads WHERE team_id = ?) ORDER BY c.start_date DESC`)
+    .all(teamId) as ChallengeCard[];
 }
 
 export function challengeMembers(challengeId: number) {
@@ -90,7 +105,12 @@ export function challengeMembers(challengeId: number) {
 }
 
 export function challengeSquads(challengeId: number) {
-  return db().prepare("SELECT id, name, slot FROM squads WHERE challenge_id = ? ORDER BY slot").all(challengeId) as Squad[];
+  return db()
+    .prepare(
+      `SELECT s.id, COALESCE(t.name, s.name) AS name, s.slot, s.team_id, t.slug AS team_slug, t.owner_id AS team_owner
+       FROM squads s LEFT JOIN teams t ON t.id = s.team_id WHERE s.challenge_id = ? ORDER BY s.slot`,
+    )
+    .all(challengeId) as Squad[];
 }
 
 export function challengeEntries(challengeId: number) {
@@ -208,10 +228,12 @@ export function friendsFeed(viewerId: number, limit = 20) {
 
 /** Lifetime totals grouped by exercise + unit. */
 export function lifetimeTotals(where: "user" | "team", id: number) {
+  // A team's totals: its members' work in challenges it hosted or entered as a team.
   const filter =
     where === "user"
-      ? "e.user_id = ?"
-      : "c.team_id = ? AND e.user_id IN (SELECT user_id FROM team_members WHERE team_id = c.team_id)";
+      ? "e.user_id = ?1"
+      : `e.user_id IN (SELECT user_id FROM team_members WHERE team_id = ?1)
+         AND (c.team_id = ?1 OR c.id IN (SELECT challenge_id FROM squads WHERE team_id = ?1))`;
   return db()
     .prepare(
       `SELECT LOWER(TRIM(c.exercise)) AS exercise_key, MAX(c.exercise) AS exercise, c.unit,
@@ -243,6 +265,10 @@ export function siteStats() {
 
 export function getTeamBySlug(slug: string) {
   return db().prepare("SELECT * FROM teams WHERE slug = ?").get(slug) as Team | undefined;
+}
+
+export function getTeamById(id: number) {
+  return db().prepare("SELECT * FROM teams WHERE id = ?").get(id) as Team | undefined;
 }
 
 export function canViewTeam(t: Team, userId: number | undefined, key?: string | null) {

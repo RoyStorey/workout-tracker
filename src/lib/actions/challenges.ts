@@ -19,7 +19,7 @@ const challengeSchema = z
     description: z.string().trim().max(1000),
     exercise: z.string().trim().min(2, "What exercise?").max(40),
     unit: z.string().trim().min(1, "What unit?").max(20),
-    format: z.enum(["shared", "individual", "battle"]),
+    format: z.enum(["shared", "individual", "battle", "teams"]),
     target: z.number().positive("Target must be positive").max(1e9).nullable(),
     start_date: day,
     end_date: day.nullable(),
@@ -53,7 +53,7 @@ function parseChallengeForm(form: FormData) {
     exercise: form.get("exercise") ?? "",
     unit: form.get("unit") ?? "",
     format: form.get("format"),
-    target: form.get("format") === "battle" ? null : num("target"),
+    target: form.get("format") === "battle" || form.get("format") === "teams" ? null : num("target"),
     start_date: form.get("start_date") ?? "",
     end_date: openEnded ? null : String(form.get("end_date") ?? ""),
     visibility: form.get("visibility"),
@@ -73,7 +73,8 @@ function parseChallengeForm(form: FormData) {
 
 type Parsed = Extract<ReturnType<typeof parseChallengeForm>, { success: true }>["data"];
 const goalType = (v: Parsed) => (v.format === "individual" ? "individual" : "shared");
-const kind = (v: Parsed) => (v.format === "battle" ? "battle" : "standard");
+const kind = (v: Parsed) => (v.format === "battle" ? "battle" : v.format === "teams" ? "teams" : "standard");
+const formatOf = (c: { kind: string; goal_type: string }) => (c.kind === "battle" ? "battle" : c.kind === "teams" ? "teams" : c.goal_type);
 
 /** Make the challenge's squads match the form: rename kept ones, add new ones, drop removed ones. */
 function syncSquads(challengeId: number, squads: Parsed["squads"]) {
@@ -124,8 +125,8 @@ export async function createChallenge(_: FormState, form: FormData): Promise<For
         v.visibility, randomCode(10), user.id, v.team_id, v.quick_adds, now(), kind(v), v.scoring, v.open_squads ? 1 : 0,
       );
     if (v.format === "battle") syncSquads(res.lastInsertRowid, v.squads);
-    // In a battle the organizer often referees, so they only join when they pick a squad.
-    if (v.format !== "battle")
+    // In battles the organizer often referees, so they only join when they pick a squad / enter a team.
+    if (v.format !== "battle" && v.format !== "teams")
       d.prepare("INSERT INTO challenge_members (challenge_id, user_id, joined_at) VALUES (?, ?, ?)").run(res.lastInsertRowid, user.id, now());
   })();
   redirect(`/c/${slug}`);
@@ -144,6 +145,7 @@ export async function updateChallenge(_: FormState, form: FormData): Promise<For
   const parsed = parseChallengeForm(form);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
+  if (v.format !== formatOf(c)) return { error: "The challenge type can't be changed after it's created" };
   if (v.team_id && v.team_id !== c.team_id && !isTeamMember(v.team_id, user.id)) return { error: "You're not on that team" };
   const outside = db()
     .prepare("SELECT COUNT(*) AS n FROM entries WHERE challenge_id = ? AND (day < ? OR (? IS NOT NULL AND day > ?))")
@@ -158,7 +160,7 @@ export async function updateChallenge(_: FormState, form: FormData): Promise<For
       v.title, v.description, v.exercise, v.unit, goalType(v), v.target, v.start_date, v.end_date, v.visibility, v.team_id,
       v.quick_adds, kind(v), v.scoring, v.open_squads ? 1 : 0, c.id,
     );
-    syncSquads(c.id, v.squads);
+    if (v.format === "battle") syncSquads(c.id, v.squads);
   })();
   notifyChallenge(c.id);
   redirect(`/c/${c.slug}`);
@@ -184,9 +186,12 @@ export async function joinChallenge(id: number, key: string | null, squadId?: nu
   if (!user) redirect(`/signup?next=${encodeURIComponent(`/c/${c.slug}${key ? `?k=${key}` : ""}`)}`);
   if (!canViewChallenge(c, user.id, key)) throw new Error("This challenge is invite-only");
   let squad: number | null = null;
-  if (c.kind === "battle") {
-    const ok = squadId && db().prepare("SELECT 1 FROM squads WHERE id = ? AND challenge_id = ?").get(squadId, c.id);
-    if (!ok) throw new Error("Pick a squad to join");
+  if (c.kind === "battle" || c.kind === "teams") {
+    const row = squadId
+      ? (db().prepare("SELECT team_id FROM squads WHERE id = ? AND challenge_id = ?").get(squadId, c.id) as { team_id: number | null } | undefined)
+      : undefined;
+    if (!row) throw new Error(c.kind === "teams" ? "Pick your team" : "Pick a squad to join");
+    if (c.kind === "teams" && !isTeamMember(row.team_id, user.id)) throw new Error("You can only compete for a team you're on");
     squad = squadId!;
   }
   db()
@@ -203,7 +208,7 @@ export async function joinChallenge(id: number, key: string | null, squadId?: nu
 export async function createSquad(id: number, key: string | null, form: FormData) {
   const user = await requireUser();
   const c = getChallengeById(id);
-  if (!c || c.kind !== "battle") throw new Error("Not a battle");
+  if (!c || c.kind !== "battle") throw new Error("Squads can only be added to a squad battle");
   if (!canViewChallenge(c, user.id, key)) throw new Error("This challenge is invite-only");
   if (c.owner_id !== user.id && !c.open_squads) throw new Error("Only the organizer can add squads");
   const name = String(form.get("name") ?? "").trim().slice(0, 30);
@@ -230,8 +235,12 @@ export async function createSquad(id: number, key: string | null, form: FormData
 export async function setSquad(challengeId: number, userId: number, form: FormData) {
   const user = await requireUser();
   const c = getChallengeById(challengeId);
-  if (!c || c.kind !== "battle") return;
+  if (!c || (c.kind !== "battle" && c.kind !== "teams")) return;
   const squadId = Number(form.get("squad_id")) || null;
+  if (c.kind === "teams" && squadId) {
+    const t = db().prepare("SELECT team_id FROM squads WHERE id = ?").get(squadId) as { team_id: number | null } | undefined;
+    if (!t || !isTeamMember(t.team_id, userId)) throw new Error("They can only compete for a team they're on");
+  }
   const isOwner = c.owner_id === user.id;
   if (!isOwner) {
     if (userId !== user.id) throw new Error("Only the organizer can move other people");
@@ -265,6 +274,60 @@ export async function removeMember(challengeId: number, userId: number) {
   d.transaction(() => {
     d.prepare("DELETE FROM entries WHERE challenge_id = ? AND user_id = ?").run(c.id, userId);
     d.prepare("DELETE FROM challenge_members WHERE challenge_id = ? AND user_id = ?").run(c.id, userId);
+  })();
+  notifyChallenge(c.id);
+  revalidatePath(`/c/${c.slug}`);
+}
+
+// ---------- team vs team ----------
+
+/** A team's leader enters the whole team. Current members are signed up automatically. */
+export async function enterTeam(challengeId: number, teamId: number, key: string | null) {
+  const user = await requireUser();
+  const c = getChallengeById(challengeId);
+  if (!c || c.kind !== "teams") throw new Error("Teams can only enter a team-vs-team challenge");
+  if (!canViewChallenge(c, user.id, key)) throw new Error("This challenge is invite-only");
+  const team = db().prepare("SELECT id, owner_id FROM teams WHERE id = ?").get(teamId) as { id: number; owner_id: number | null } | undefined;
+  if (!team || team.owner_id !== user.id) throw new Error("Only the team's leader can enter it");
+  if (c.end_date && (await getToday()) > c.end_date) throw new Error("This challenge is over");
+  const d = db();
+  d.transaction(() => {
+    if (d.prepare("SELECT 1 FROM squads WHERE challenge_id = ? AND team_id = ?").get(c.id, team.id)) return;
+    const used = new Set((d.prepare("SELECT slot FROM squads WHERE challenge_id = ?").all(c.id) as { slot: number }[]).map((r) => r.slot));
+    let slot = 0;
+    while (used.has(slot)) slot++;
+    const sq = d
+      .prepare("INSERT INTO squads (challenge_id, name, slot, created_at, team_id) VALUES (?, ?, ?, ?, ?)")
+      .run(c.id, `#team-${team.id}`, slot, now(), team.id).lastInsertRowid;
+    // Sign up every current member; anyone already competing for another team stays put.
+    d.prepare(
+      `INSERT INTO challenge_members (challenge_id, user_id, joined_at, squad_id)
+       SELECT ?, user_id, ?, ? FROM team_members WHERE team_id = ?
+       ON CONFLICT(challenge_id, user_id) DO UPDATE SET squad_id = COALESCE(squad_id, excluded.squad_id)`,
+    ).run(c.id, now(), sq, team.id);
+  })();
+  notifyChallenge(c.id);
+  revalidatePath(`/c/${c.slug}`);
+}
+
+/** Pull a team out. Only allowed before any of its members has logged for it. */
+export async function withdrawTeam(challengeId: number, squadId: number) {
+  const user = await requireUser();
+  const c = getChallengeById(challengeId);
+  if (!c || c.kind !== "teams") return;
+  const sq = db()
+    .prepare("SELECT s.id, t.owner_id FROM squads s JOIN teams t ON t.id = s.team_id WHERE s.id = ? AND s.challenge_id = ?")
+    .get(squadId, c.id) as { id: number; owner_id: number | null } | undefined;
+  if (!sq) return;
+  if (sq.owner_id !== user.id && c.owner_id !== user.id) throw new Error("Only the team leader or the organizer can withdraw a team");
+  const logged = db()
+    .prepare("SELECT 1 FROM entries e JOIN challenge_members m ON m.challenge_id = e.challenge_id AND m.user_id = e.user_id WHERE e.challenge_id = ? AND m.squad_id = ? LIMIT 1")
+    .get(c.id, sq.id);
+  if (logged) throw new Error("This team has already logged reps, so it can't be withdrawn");
+  const d = db();
+  d.transaction(() => {
+    d.prepare("DELETE FROM challenge_members WHERE challenge_id = ? AND squad_id = ? AND user_id != ?").run(c.id, sq.id, c.owner_id ?? -1);
+    d.prepare("DELETE FROM squads WHERE id = ?").run(sq.id);
   })();
   notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);

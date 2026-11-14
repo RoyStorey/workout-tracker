@@ -5,7 +5,7 @@ import { createChallenge, updateChallenge } from "@/lib/actions/challenges";
 import { cx } from "@/lib/format";
 import { FormMessage, SubmitButton } from "./forms";
 
-type Format = "individual" | "shared" | "battle";
+type Format = "individual" | "shared" | "battle" | "teams";
 type SquadRow = { id: number | null; name: string; key: number };
 
 export type ChallengeValues = {
@@ -39,12 +39,14 @@ function addDays(day: string, n: number) {
 const FORMATS: { id: Format; title: string; body: string }[] = [
   { id: "individual", title: "Personal goal", body: "Everyone chases the same number on their own. Who finishes first?" },
   { id: "shared", title: "Group goal", body: "Everyone's reps add up toward one big total." },
-  { id: "battle", title: "Squad battle", body: "Split people into squads. Most reps by the end wins." },
+  { id: "battle", title: "Squad battle", body: "You split people into squads (Alpha, Bravo…). Great inside one unit or gym." },
+  { id: "teams", title: "Team vs team", body: "Existing teams enter and compete. Each team's leader signs the whole team up." },
 ];
 
 const TEMPLATES: { label: string; v: (today: string) => Partial<ChallengeValues> }[] = [
   { label: "5,000 pushups in a month", v: (t) => ({ format: "individual", title: "5,000 Pushup Month", exercise: "Pushups", unit: "reps", target: "5000", end_date: addDays(t, 29), quick_adds: "10, 20, 25, 50" }) },
   { label: "Squadron pushup battle", v: (t) => ({ format: "battle", title: "Squadron Pushup Battle", exercise: "Pushups", unit: "reps", target: "", end_date: addDays(t, 29), scoring: "average", quick_adds: "10, 20, 25, 50" }) },
+  { label: "Team pushup league", v: (t) => ({ format: "teams", title: "Pushup League", exercise: "Pushups", unit: "reps", target: "", end_date: addDays(t, 29), scoring: "average", quick_adds: "10, 20, 25, 50" }) },
   { label: "Group 10K squats", v: (t) => ({ format: "shared", title: "Group 10K Squats", exercise: "Squats", unit: "reps", target: "10000", end_date: addDays(t, 29), quick_adds: "15, 25, 50, 100" }) },
   { label: "100 miles in 30 days", v: (t) => ({ format: "individual", title: "100 Mile Month", exercise: "Running", unit: "miles", target: "100", end_date: addDays(t, 29), quick_adds: "1, 2, 3.1, 5" }) },
   { label: "Lifetime tracker", v: () => ({ format: "individual", title: "Lifetime Pushups", exercise: "Pushups", unit: "reps", target: "", open_ended: true, quick_adds: "10, 25, 50" }) },
@@ -77,6 +79,8 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
   const [squads, setSquads] = useState<SquadRow[]>(toRows(initial?.squads?.length ? initial.squads : PHONETIC.slice(0, 4).map((name) => ({ id: null, name }))));
   const set = <K extends keyof ChallengeValues>(k: K, val: ChallengeValues[K]) => setV((s) => ({ ...s, [k]: val }));
   const battle = v.format === "battle";
+  const teamsFmt = v.format === "teams";
+  const versus = battle || teamsFmt;
   const days = !v.open_ended && v.end_date >= v.start_date ? Math.round((Date.parse(v.end_date) - Date.parse(v.start_date)) / 86400000) + 1 : null;
   const perDay = days && Number(v.target.replace(/,/g, "")) > 0 ? Number(v.target.replace(/,/g, "")) / days : null;
 
@@ -102,11 +106,12 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
       )}
 
       <Step n={1} title="What kind of challenge?">
-        <div className="grid gap-2 sm:grid-cols-3">
-          {FORMATS.map((f) => (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {FORMATS.filter((f) => !editing || f.id === v.format).map((f) => (
             <button
               key={f.id}
               type="button"
+              disabled={editing}
               onClick={() => set("format", f.id)}
               aria-pressed={v.format === f.id}
               className={cx("flex flex-col items-start justify-start rounded-md border p-4 text-left transition", v.format === f.id ? "border-ink bg-surface ring-1 ring-ink" : "border-line-strong bg-surface hover:border-ink")}
@@ -116,6 +121,7 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
             </button>
           ))}
         </div>
+        {editing && <p className="hint">The type can&apos;t be changed after a challenge is created.</p>}
       </Step>
 
       <Step n={2} title="The basics">
@@ -138,10 +144,17 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
         </div>
       </Step>
 
-      <Step n={3} title={battle ? "Squads and scoring" : "Goal and dates"}>
+      <Step n={3} title={battle ? "Squads and scoring" : teamsFmt ? "Scoring and dates" : "Goal and dates"}>
         <div className="space-y-5">
-          {battle ? (
+          {versus ? (
             <>
+              {teamsFmt && (
+                <p className="rounded-md border border-line-strong bg-surface p-3 text-sm">
+                  After you create it, send the link to team leaders. Each leader taps <b>Enter my team</b>, and their whole team is signed up.
+                  {v.visibility === "public" && " Since it's public, any team on the site can enter."}
+                </p>
+              )}
+              {battle && (
               <div>
                 <div className="label">Squads</div>
                 <div className="space-y-2">
@@ -181,12 +194,13 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
                 <p className="hint">People pick their squad when they join. You can move anyone later from the challenge page.</p>
                 {editing && <p className="hint text-bad">Removing a squad leaves its members without one until you reassign them.</p>}
               </div>
+              )}
               <div>
                 <div className="label">How is the winner decided?</div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {([
-                    ["total", "Most total", `The squad with the most ${v.unit || "reps"} wins. Best when squads are the same size.`],
-                    ["average", "Best average per member", "Total divided by squad size, so a squad of 6 can beat a squad of 12."],
+                    ["total", "Most total", `Most ${v.unit || "reps"} wins. Best when ${teamsFmt ? "teams" : "squads"} are about the same size.`],
+                    ["average", "Best average per member", `Total divided by ${teamsFmt ? "team" : "squad"} size, so a group of 6 can beat a group of 12.`],
                   ] as const).map(([val, title, body]) => (
                     <label key={val} className={cx("cursor-pointer rounded-md border p-3", v.scoring === val ? "border-ink ring-1 ring-ink" : "border-line-strong hover:border-ink")}>
                       <input type="radio" name="scoring" value={val} className="sr-only" checked={v.scoring === val} onChange={() => set("scoring", val)} />
@@ -196,6 +210,7 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
                   ))}
                 </div>
               </div>
+              {battle && (
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="open_squads" checked={v.open_squads} onChange={(e) => set("open_squads", e.target.checked)} className="mt-0.5 accent-[var(--ink)]" />
                 <span>
@@ -203,6 +218,7 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
                   <span className="block text-xs text-muted">Otherwise only you can add squads.</span>
                 </span>
               </label>
+              )}
             </>
           ) : (
             <Field label={v.format === "individual" ? "Target per person" : "Target for the group"} optional htmlFor="target">
@@ -266,7 +282,9 @@ export function ChallengeForm({ initial, teams, today }: { initial?: Partial<Cha
       <div className="space-y-3 border-t border-line pt-6">
         <FormMessage state={state} />
         <SubmitButton className="btn-primary h-12 w-full text-base sm:w-auto sm:px-10">{editing ? "Save changes" : "Create challenge"}</SubmitButton>
-        {!editing && battle && <p className="text-xs text-muted">You won&apos;t be on a squad until you pick one, so you can just referee if you like.</p>}
+        {!editing && versus && (
+          <p className="text-xs text-muted">You won&apos;t be competing until you {battle ? "pick a squad" : "enter or join a team"}, so you can just referee if you like.</p>
+        )}
       </div>
     </form>
   );

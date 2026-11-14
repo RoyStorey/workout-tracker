@@ -51,7 +51,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
         ))}
       </div>
       {list.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{list.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{list.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
       ) : (
         <Empty title={query ? "Nothing matches that" : "Nothing here yet"} action={{ href: "/challenges/new", label: "Start one" }}>
           Public challenges show up here for anyone to join.
@@ -61,7 +61,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       {teams.length > 0 && (
         <section className="pt-4">
           <div className="eyebrow mb-3">Public teams</div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
             {teams.map((t) => (
               <Link key={t.id} href={`/t/${t.slug}`} className="card p-4 hover:border-line-strong">
                 <div className="font-semibold">{t.name}</div>

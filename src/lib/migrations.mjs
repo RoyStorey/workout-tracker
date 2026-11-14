@@ -107,6 +107,14 @@ export const MIGRATIONS = [
   CREATE UNIQUE INDEX squads_name ON squads(challenge_id, name COLLATE NOCASE);
   ALTER TABLE challenge_members ADD COLUMN squad_id INTEGER REFERENCES squads(id) ON DELETE SET NULL;
   `,
+
+  // v4: team-vs-team challenges (a squad can represent a whole team) and
+  // permanent random team URLs so renaming a team never changes its link.
+  `
+  ALTER TABLE squads ADD COLUMN team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE;
+  CREATE UNIQUE INDEX squads_team ON squads(challenge_id, team_id) WHERE team_id IS NOT NULL;
+  UPDATE teams SET slug = lower(hex(randomblob(4)));
+  `,
 ];
 
 /**

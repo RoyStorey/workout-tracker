@@ -35,6 +35,7 @@ export function ConfirmButton({
 }) {
   return (
     <form
+      className="contents"
       action={action}
       onSubmit={(e) => {
         if (!confirm(message)) e.preventDefault();

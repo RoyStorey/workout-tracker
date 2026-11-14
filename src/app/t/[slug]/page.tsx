@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser, getToday } from "@/lib/auth";
-import { canViewTeam, getTeamBySlug, lifetimeTotals, teamChallenges, teamMembers } from "@/lib/queries";
+import { canViewTeam, challengesEnteredBy, getTeamBySlug, lifetimeTotals, teamChallenges, teamMembers } from "@/lib/queries";
 import { deleteTeam, joinTeam, leaveTeam, regenerateTeamInvite, removeTeamMember, transferTeam } from "@/lib/actions/teams";
 import { db } from "@/lib/db";
 import { addDays } from "@/lib/dates";
@@ -11,7 +11,7 @@ import { ChallengeCardView } from "@/components/challenge-card";
 import { CopyLink } from "@/components/copy-link";
 import { ConfirmButton, SubmitButton } from "@/components/forms";
 import { TeamForm } from "@/components/team-form";
-import { Empty, VisibilityPill } from "@/components/ui";
+import { Empty, SectionHead, VisibilityPill } from "@/components/ui";
 import { PlusIcon } from "@/components/icons";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string }> };
@@ -32,7 +32,8 @@ export default async function TeamPage({ params, searchParams }: Props) {
   const members = teamMembers(t.id);
   const isMember = !!user && members.some((m) => m.id === user.id);
   const isOwner = !!user && t.owner_id === user.id;
-  const challenges = teamChallenges(t.id).filter((c) => isMember || c.visibility === "public");
+  const hosted = teamChallenges(t.id).filter((c) => isMember || c.visibility === "public");
+  const competing = challengesEnteredBy(t.id).filter((c) => isMember || c.visibility === "public");
   const totals = lifetimeTotals("team", t.id);
 
   // Who's been busiest over the last 7 days (sets across team challenges)
@@ -40,9 +41,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
     .prepare(
       `SELECT e.user_id, COUNT(*) AS sets, COUNT(DISTINCT e.day) AS days FROM entries e
        JOIN challenges c ON c.id = e.challenge_id
-       WHERE c.team_id = ? AND e.day >= ? GROUP BY e.user_id`,
+       WHERE e.day >= ? AND e.user_id IN (SELECT user_id FROM team_members WHERE team_id = ?)
+         AND (c.team_id = ? OR c.id IN (SELECT challenge_id FROM squads WHERE team_id = ?))
+       GROUP BY e.user_id`,
     )
-    .all(t.id, addDays(today, -6)) as { user_id: number; sets: number; days: number }[];
+    .all(addDays(today, -6), t.id, t.id, t.id) as { user_id: number; sets: number; days: number }[];
   const weeklyBy = new Map(weekly.map((w) => [w.user_id, w]));
   const ranked = [...members].sort((a, b) => (weeklyBy.get(b.id)?.sets ?? 0) - (weeklyBy.get(a.id)?.sets ?? 0));
 
@@ -54,9 +57,15 @@ export default async function TeamPage({ params, searchParams }: Props) {
           <span className="tag">{members.length} members</span>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h1 className="display text-5xl uppercase sm:text-6xl">{t.name}</h1>
             {t.description && <p className="mt-1 max-w-2xl whitespace-pre-line text-muted">{t.description}</p>}
+            {isMember && (
+              <p className="mt-3 text-sm text-muted">
+                Invite code <code className="ml-1 rounded border border-line-strong bg-surface px-2 py-0.5 font-mono text-sm font-semibold tracking-wider text-ink select-all">{t.invite_code}</code>
+                <span className="ml-2 text-xs">Friends enter it on their Teams page.</span>
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {isMember && <CopyLink path={`/join/${t.invite_code}`} label="Invite link" />}
@@ -74,12 +83,12 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
       {totals.length > 0 && (
         <section>
-          <div className="eyebrow mb-3">Team lifetime totals</div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SectionHead title="Lifetime" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             {totals.map((x) => (
               <div key={x.exercise_key + x.unit} className="card p-4">
-                <div className="text-sm text-muted">{x.exercise}</div>
-                <div className="tnum text-2xl font-bold">{fmtCompact(x.total)} <span className="text-sm font-medium text-muted">{x.unit}</span></div>
+                <div className="eyebrow">{x.exercise}</div>
+                <div className="mt-1 flex items-baseline gap-1.5"><span className="display text-4xl">{fmtCompact(x.total)}</span> <span className="text-sm text-muted">{x.unit}</span></div>
                 <div className="tnum text-xs text-muted">{fmtNum(x.sets)} sets</div>
               </div>
             ))}
@@ -87,15 +96,25 @@ export default async function TeamPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section>
-          <div className="eyebrow mb-3">Challenges</div>
-          {challenges.length ? (
-            <div className="grid gap-3 sm:grid-cols-2">{challenges.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
-          ) : (
-            <Empty title="No team challenges yet">{isMember ? "Kick one off with the Team challenge button." : "Join the team to see more."}</Empty>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-10">
+          {competing.length > 0 && (
+            <section>
+              <SectionHead title="Competing in" />
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">{competing.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+            </section>
           )}
-        </section>
+          <section>
+            <SectionHead title="Team challenges">
+              {isOwner && <Link href="/explore" className="text-sm font-semibold text-muted hover:text-ink">Find a team-vs-team challenge →</Link>}
+            </SectionHead>
+            {hosted.length ? (
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">{hosted.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+            ) : (
+              <Empty title="No team challenges yet">{isMember ? "Kick one off with the Team challenge button." : "Join the team to see more."}</Empty>
+            )}
+          </section>
+        </div>
 
         <aside className="space-y-6">
           <section className="card p-4">

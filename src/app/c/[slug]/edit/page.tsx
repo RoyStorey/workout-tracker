@@ -28,7 +28,7 @@ export default async function EditChallengePage({ params }: { params: Promise<{ 
           description: c.description,
           exercise: c.exercise,
           unit: c.unit,
-          format: c.kind === "battle" ? "battle" : c.goal_type,
+          format: c.kind === "standard" ? c.goal_type : c.kind,
           scoring: c.scoring,
           open_squads: !!c.open_squads,
           squads: challengeSquads(c.id).map((q) => ({ id: q.id, name: q.name })),

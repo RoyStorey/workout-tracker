@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db, now } from "../db";
 import { getCurrentUser, requireUser } from "../auth";
-import { randomCode, slugify } from "../ids";
+import crypto from "node:crypto";
+import { randomCode } from "../ids";
 import { canViewTeam, type Team } from "../queries";
 import type { FormState } from "./auth";
 
@@ -25,8 +26,9 @@ export async function createTeam(_: FormState, form: FormData): Promise<FormStat
   const parsed = parse(form);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const v = parsed.data;
-  let slug = slugify(v.name);
-  if (db().prepare("SELECT 1 FROM teams WHERE slug = ?").get(slug)) slug = `${slug}-${randomCode(4)}`;
+  // Permanent random id for the URL, so renaming the team never breaks links.
+  let slug = crypto.randomBytes(4).toString("hex");
+  while (db().prepare("SELECT 1 FROM teams WHERE slug = ?").get(slug)) slug = crypto.randomBytes(4).toString("hex");
   const d = db();
   d.transaction(() => {
     const res = d
@@ -104,4 +106,27 @@ export async function transferTeam(teamId: number, userId: number) {
     d.prepare("UPDATE teams SET owner_id = ? WHERE id = ?").run(userId, t.id);
   })();
   revalidatePath(`/t/${t.slug}`);
+}
+
+/** Join with an invite code, or a pasted invite link. Works for teams and challenges. */
+export async function joinByCode(_: FormState, form: FormData): Promise<FormState> {
+  const raw = String(form.get("code") ?? "").trim();
+  if (!raw) return { error: "Enter a code" };
+  // Accept a full link like https://host/join/abc123 or .../t/x?k=abc123
+  let code = raw;
+  try {
+    const u = new URL(raw);
+    code = u.searchParams.get("k") ?? u.pathname.split("/").filter(Boolean).pop() ?? raw;
+  } catch {}
+  code = code.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const user = await getCurrentUser();
+  if (!user) redirect(`/signup?next=${encodeURIComponent(`/join/${code}`)}`);
+  const t = db().prepare("SELECT * FROM teams WHERE invite_code = ?").get(code) as Team | undefined;
+  if (t) {
+    db().prepare("INSERT OR IGNORE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").run(t.id, user.id, now());
+    redirect(`/t/${t.slug}`);
+  }
+  const c = db().prepare("SELECT slug FROM challenges WHERE invite_code = ?").get(code) as { slug: string } | undefined;
+  if (c) redirect(`/c/${c.slug}?k=${code}`);
+  return { error: "No team or challenge uses that code. Check for typos." };
 }

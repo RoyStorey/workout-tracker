@@ -6,12 +6,13 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 
 - **Any exercise, any unit, any timeframe**: pushups, miles, plank minutes and so on. Challenges can have an end date or run forever (lifetime trackers).
 - **Three formats**: *personal goal* (everyone chases the same number), *group goal* (everyone adds to one total), or *squad battle*. The target is optional: leave it blank for a "most wins" leaderboard.
+- **Team vs team**: existing teams enter a challenge and compete. A team's leader taps "Enter my team" and the whole team is signed up; anyone who joins the team later can jump in. Score by total or average per member.
 - **Squad battles**: split people into up to 8 squads (Alpha, Bravo…) that compete over the timeframe. Score by total, or by average per member so uneven squads stay fair. People pick a squad when they join, the organizer can move anyone, and the organizer doesn't have to be on a squad.
 - **Public or private**: public challenges are listed on Explore. Private ones are visible only through an invite link (or to the hosting team).
-- **Teams**: your regular crew. Host challenges under a team, track combined lifetime totals, and see who has been busiest this week.
+- **Teams**: your regular crew, at a permanent link (`/t/a3f9c21b`) that survives renames. Join with an invite link or by typing the code on the Teams page. Host challenges under a team, track combined lifetime totals, and see who has been busiest this week.
 - **Stats**: total and remaining, needed per day, today's target to stay on pace, ahead or behind pace, projected finish date, projected total, streaks, best set, best day, average set, and active days.
 - **Charts**: cumulative total vs. even pace, plus daily bars, with hover tooltips and a table view.
-- **Spreadsheet view**: one row per day and one column per member, like the old sheet.
+- **Spreadsheet view**: one row per day and one column per person, with heat shading, frozen headers, a totals row, and CSV download (daily totals or every set).
 - **Fast logging**: one-tap quick-add buttons (set per challenge), custom amounts, backdating, notes, undo, and a **tally counter** you can tap with your nose during pushups.
 - **Real time**: when anyone logs, edits, joins, or gives kudos, every open page watching that challenge updates within a second, with no refresh. Uses Server-Sent Events; nothing extra to run.
 - **Social**: activity feed, kudos, leaderboards (all-time, this week, today), badges (🔥 streaks, 👑 MVP, 🏆 goal crushed, ⚡ finished early, and more).
