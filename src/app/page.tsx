@@ -9,7 +9,7 @@ import {
   teamsForUser,
 } from "@/lib/queries";
 import { challengeStatus, computeStats } from "@/lib/stats";
-import { fmtCompact, fmtNum, fmtPct } from "@/lib/format";
+import { fmtCompact, fmtNum, fmtPct, plural } from "@/lib/format";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Feed } from "@/components/feed";
@@ -129,7 +129,7 @@ async function Dashboard({ user }: { user: User }) {
                 {teams.map((t) => (
                   <Link key={t.id} href={`/t/${t.slug}`} className="card px-4 py-3 text-sm hover:border-accent/50">
                     <div className="font-semibold">{t.name}</div>
-                    <div className="text-xs text-muted">{t.member_count} members · {t.challenge_count} challenges</div>
+                    <div className="text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</div>
                   </Link>
                 ))}
               </div>

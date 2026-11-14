@@ -46,6 +46,16 @@ npm run build
 
 Then restart `npm run start`. Database migrations run automatically on startup.
 
+### Demo data
+
+```bash
+npm run seed                          # adds 22 demo users, 4 teams, 12 challenges, weeks of sets
+npm run seed -- --join <username>     # also adds your real account to some demo challenges, with history
+npm run seed -- --clear               # removes all demo data; real accounts are never touched
+```
+
+Demo accounts all use the password `password`. In PowerShell, quote the dashes: `npm run seed '--' --clear`.
+
 ### Admin chores
 
 ```bash
@@ -86,5 +96,5 @@ src/
     stats.ts      all challenge math + badges
     queries.ts    read queries and access rules
     actions/      server actions (auth, challenges & logging, teams)
-scripts/          reset-password, backup
+scripts/          seed (demo data), reset-password, backup
 ```

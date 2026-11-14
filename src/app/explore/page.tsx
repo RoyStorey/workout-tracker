@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getToday } from "@/lib/auth";
 import { publicChallenges, publicTeams, siteStats } from "@/lib/queries";
 import { challengeStatus, type Status } from "@/lib/stats";
-import { cx, fmtCompact } from "@/lib/format";
+import { cx, fmtCompact, plural } from "@/lib/format";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Empty } from "@/components/ui";
 
@@ -66,7 +66,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
               <Link key={t.id} href={`/t/${t.slug}`} className="card p-4 hover:border-accent/50">
                 <div className="font-semibold">{t.name}</div>
                 {t.description && <p className="mt-0.5 line-clamp-2 text-sm text-muted">{t.description}</p>}
-                <div className="mt-2 text-xs text-muted">{t.member_count} members · {t.challenge_count} challenges</div>
+                <div className="mt-2 text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</div>
               </Link>
             ))}
           </div>

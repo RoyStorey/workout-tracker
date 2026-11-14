@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { publicTeams, teamsForUser, type TeamCard } from "@/lib/queries";
 import { Empty, VisibilityPill } from "@/components/ui";
+import { plural } from "@/lib/format";
 import { PlusIcon } from "@/components/icons";
 
 export const metadata = { title: "Teams" };
@@ -14,7 +15,7 @@ function TeamTile({ t }: { t: TeamCard }) {
         <VisibilityPill visibility={t.visibility} />
       </div>
       {t.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{t.description}</p>}
-      <div className="mt-2 text-xs text-muted">{t.member_count} members · {t.challenge_count} challenges</div>
+      <div className="mt-2 text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</div>
     </Link>
   );
 }
