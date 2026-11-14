@@ -1,6 +1,7 @@
 // Usage: npm run reset-password -- <username> <new-password>
 // There's no email recovery, so this is how the admin resets a forgotten password.
-import Database from "better-sqlite3";
+process.removeAllListeners("warning"); // hide node:sqlite's "experimental" notice
+const { DatabaseSync } = await import("node:sqlite");
 import crypto from "node:crypto";
 import path from "node:path";
 
@@ -10,7 +11,7 @@ if (!username || !password || password.length < 6) {
   process.exit(1);
 }
 const file = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "app.db");
-const db = new Database(file);
+const db = new DatabaseSync(file);
 const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
 if (!user) {
   console.error(`No user named "${username}"`);

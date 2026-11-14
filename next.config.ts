@@ -8,7 +8,6 @@ const extraOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .filter(Boolean);
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3"],
   poweredByHeader: false,
   experimental: {
     serverActions: { allowedOrigins: extraOrigins },

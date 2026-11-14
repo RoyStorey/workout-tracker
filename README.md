@@ -18,7 +18,7 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 
 ## Running it
 
-Requires Node 20.9+.
+Requires **Node.js 22.13 or newer**. The database engine is built into Node, so nothing gets compiled on install. Check with `node -v`. If you use nvm, run `nvm install 22`, then `nvm use` that version.
 
 ```bash
 npm install
@@ -67,9 +67,14 @@ npm run backup                                         # copies the DB to data/b
 
 Plain HTTP over a public IP works, but passwords travel unencrypted. When you get a domain, the easiest upgrade is [Caddy](https://caddyserver.com) in front of the app (`reverse_proxy localhost:3000`), which gets free certificates automatically.
 
+### Troubleshooting (Windows)
+
+- **`EPERM: operation not permitted, rmdir ... node_modules`**: something has files in `node_modules` open. Stop any running `npm run start` or `npm run dev`, close editors and terminals that are in the folder, delete `node_modules`, and run `npm install` again. Antivirus scanning or a synced folder (OneDrive) can also cause this.
+- **"This app needs Node.js 22.13 or newer"**: upgrade Node as described above.
+
 ## Stack
 
-Next.js 16 (App Router, Server Actions), React 19, TypeScript, Tailwind CSS 4, SQLite via better-sqlite3. Passwords are hashed with scrypt, and sessions are random tokens stored hashed in the DB with httpOnly cookies.
+Next.js 16 (App Router, Server Actions), React 19, TypeScript, Tailwind CSS 4, SQLite via Node's built-in `node:sqlite` (no native dependencies). Passwords are hashed with scrypt, and sessions are random tokens stored hashed in the DB with httpOnly cookies.
 
 ```
 src/
