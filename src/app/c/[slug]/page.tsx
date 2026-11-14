@@ -33,7 +33,7 @@ import { CopyLink } from "@/components/copy-link";
 import { Feed } from "@/components/feed";
 import { ProgressChart } from "@/components/progress-chart";
 import { QuickLog } from "@/components/quick-log";
-import { PaceNote, ProgressBar, SquadDot, Stat, StatusTag, squadColor } from "@/components/ui";
+import { PaceNote, Panel, ProgressBar, SquadDot, Stat, StatusTag, squadColor } from "@/components/ui";
 import { TrashIcon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { Spreadsheet } from "@/components/spreadsheet";
@@ -247,13 +247,13 @@ export default async function ChallengePage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-8">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
           {/* ---------- Status + log ---------- */}
           {battle ? (
             <section className="card overflow-hidden">
-              <div className="flex items-baseline justify-between gap-3 border-b border-line px-5 py-3">
-                <h2 className="display text-2xl uppercase">Scoreboard</h2>
+              <div className="flex min-h-12 items-center justify-between gap-3 border-b border-line bg-surface-2/40 px-4 py-2.5">
+                <h2 className="display text-xl uppercase">Scoreboard</h2>
                 <span className="text-xs text-muted">{average ? `${unit} per member` : `total ${unit}`}</span>
               </div>
               {board_.length === 0 ? (
@@ -386,11 +386,11 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             </section>
           )}
 
-          <div className="grid gap-8 2xl:grid-cols-2">
           {/* ---------- Standings ---------- */}
-          <section className="min-w-0">
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <h2 className="display text-2xl uppercase">{battle ? "Top athletes" : "Standings"}</h2>
+          <Panel
+            flush
+            title={battle ? "Top athletes" : "Standings"}
+            actions={
               <div className="flex text-xs font-semibold">
                 {(["all", "week", "today"] as const).map((p) => (
                   <Link
@@ -403,11 +403,12 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   </Link>
                 ))}
               </div>
-            </div>
+            }
+          >
             {rows.length === 0 ? (
-              <p className="text-sm text-muted">No one has joined yet.</p>
+              <p className="p-4 text-sm text-muted">No one has joined yet.</p>
             ) : (
-              <ol className="card divide-y divide-line">
+              <ol className="max-h-[36rem] divide-y divide-line overflow-auto">
                 {rows.map((r, i) => {
                   const sq = battle ? squads.find((s) => s.id === r.user.squad_id) : undefined;
                   const pct = !shared && !battle && c.target ? r.stats.total / c.target : null;
@@ -442,13 +443,12 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                 })}
               </ol>
             )}
-          </section>
+          </Panel>
 
           {/* ---------- Chart ---------- */}
           {group.series.length > 1 && group.status !== "upcoming" && (
-            <section className="min-w-0">
-              <h2 className="display mb-3 text-2xl uppercase">{battle ? (many ? "Race · top 5" : "Race") : "Progress"}</h2>
-              <div className="card p-4">
+            <Panel title={battle ? (many ? "Race · top 5" : "Race") : "Progress"}>
+              <div>
                 {battle ? (
                   <BattleChart
                     days={group.series.map((p) => p.day)}
@@ -484,17 +484,14 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   />
                 )}
               </div>
-            </section>
+            </Panel>
           )}
-
-          </div>
 
           {/* ---------- Numbers ---------- */}
           {group.status !== "upcoming" && (
-            <section>
-              <h2 className="display mb-3 text-2xl uppercase">{mine && !shared ? "Your numbers" : "By the numbers"}</h2>
+            <Panel flush title={mine && !shared ? "Your numbers" : "By the numbers"}>
               <NumbersGrid s={battle && mine ? mine.stats : focus} unit={unit} />
-            </section>
+            </Panel>
           )}
 
           {group.daysElapsed > 0 && members.length > 0 && (
@@ -511,13 +508,10 @@ export default async function ChallengePage({ params, searchParams }: Props) {
           )}
 
           {myRecent.length > 0 && (
-            <details className="card group p-4">
-              <summary className="cursor-pointer list-none font-semibold [&::-webkit-details-marker]:hidden">
-                Your sets <span className="font-normal text-muted">({myRecent.length}{myRecent.length === 20 ? "+" : ""}) · fix a mistake</span>
-              </summary>
-              <ul className="mt-3 divide-y divide-line text-sm">
+            <Panel flush title="Your sets" actions={<span className="text-xs text-muted">Logged something wrong? Delete it here.</span>}>
+              <ul className="max-h-72 divide-y divide-line overflow-auto text-sm">
                 {myRecent.map((e) => (
-                  <li key={e.id} className="flex items-center justify-between gap-3 py-2">
+                  <li key={e.id} className="flex items-center justify-between gap-3 px-4 py-2">
                     <span className="tnum w-24 font-semibold">{fmtNum(e.amount)} {unit}</span>
                     <span className="min-w-0 flex-1 truncate text-muted">{e.note}</span>
                     <span className="text-xs text-faint">{fmtDay(e.day)}</span>
@@ -529,36 +523,40 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   </li>
                 ))}
               </ul>
-            </details>
+            </Panel>
           )}
         </div>
 
         {/* ---------- Sidebar ---------- */}
-        <aside className="min-w-0 space-y-8">
-          <section>
-            <h2 className="display mb-3 text-2xl uppercase">Activity</h2>
-            <div className="card px-4">
+        <aside className="min-w-0 space-y-6">
+          <Panel flush title="Activity" actions={<span className="flex items-center gap-1.5 text-xs text-muted"><span className="h-1.5 w-1.5 rounded-full bg-good" /> Live</span>}>
+            <div className="max-h-[40rem] overflow-auto px-4">
               <Feed items={feed} unit={unit} viewerId={isMember ? user?.id : undefined} />
             </div>
-          </section>
+          </Panel>
 
           {teamsMode && mySquad && enterable.length > 0 && (
-            <section className="card p-4">
-              <div className="text-sm font-semibold">You lead other teams</div>
-              <div className="mt-2 space-y-2">
+            <Panel title="Your other teams">
+              <div className="space-y-2">
                 {enterable.map((t) => (
                   <form key={t.id} action={enterTeam.bind(null, c.id, t.id, k ?? null)}>
                     <SubmitButton className="btn-ghost h-9 w-full text-xs">Enter {t.name}</SubmitButton>
                   </form>
                 ))}
               </div>
-            </section>
+            </Panel>
           )}
 
           {isOwner && (
-            <section>
-              <h2 className="display mb-3 text-2xl uppercase">Organizer</h2>
-              <div className="card divide-y divide-line">
+            <Panel flush title="Organizer">
+              <div className="divide-y divide-line">
+                <div className="flex flex-wrap gap-2 p-4">
+                  <Link href={`/c/${c.slug}/edit`} className="btn-ghost h-9 flex-1 text-xs">Edit challenge</Link>
+                  <CopyLink path={invitePath} label={c.visibility === "private" ? "Copy invite link" : "Copy link"} className="btn-ghost h-9 flex-1 text-xs" />
+                </div>
+                <div className="px-4 py-3 text-xs text-muted">
+                  {plural(members.length, "person", "people")} in · {c.visibility === "public" ? "Public: anyone can find and join it on Explore." : "Private: only people with the link can see it."}
+                </div>
                 {c.kind === "battle" && members.length > 0 && (
                   <div className="p-4">
                     <div className="mb-2 text-sm font-semibold">Squad assignments</div>
@@ -611,7 +609,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   </details>
                 )}
               </div>
-            </section>
+            </Panel>
           )}
 
           {isMember && !isOwner && (
@@ -650,7 +648,7 @@ function NumbersGrid({ s, unit }: { s: Stats; unit: string }) {
     ...(s.finishDay && !s.reached && s.target ? ([["Finish date", fmtDay(s.finishDay), "at this pace"]] as [string, React.ReactNode, React.ReactNode][]) : []),
   ];
   return (
-    <div className="card grid grid-cols-2 sm:grid-cols-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4">
       {cells.map(([label, value, sub], i) => (
         <div key={label} className={cx("border-line p-4", i % 2 === 1 && "border-l", i >= 2 && "border-t", "sm:border-l sm:border-t-0", i % 4 === 0 && "sm:border-l-0", i >= 4 && "sm:border-t")}>
           <Stat label={label} value={value} sub={sub} />

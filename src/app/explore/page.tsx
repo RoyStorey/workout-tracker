@@ -4,7 +4,8 @@ import { publicChallenges, publicTeams, siteStats } from "@/lib/queries";
 import { challengeStatus, type Status } from "@/lib/stats";
 import { cx, fmtCompact, plural } from "@/lib/format";
 import { ChallengeCardView } from "@/components/challenge-card";
-import { Empty } from "@/components/ui";
+import { Empty, Panel } from "@/components/ui";
+import { TeamRow } from "@/components/team-row";
 
 export const metadata = { title: "Explore" };
 
@@ -59,18 +60,11 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       )}
 
       {teams.length > 0 && (
-        <section className="pt-4">
-          <div className="eyebrow mb-3">Public teams</div>
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
-            {teams.map((t) => (
-              <Link key={t.id} href={`/t/${t.slug}`} className="card p-4 hover:border-line-strong">
-                <div className="font-semibold">{t.name}</div>
-                {t.description && <p className="mt-0.5 line-clamp-2 text-sm text-muted">{t.description}</p>}
-                <div className="mt-2 text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</div>
-              </Link>
-            ))}
+        <Panel flush title="Public teams" actions={<Link href="/teams" className="text-xs font-semibold text-muted hover:text-ink">All teams →</Link>}>
+          <div className="grid divide-y divide-line md:grid-cols-2 md:divide-y-0 md:[&>*]:border-b md:[&>*]:border-line md:[&>*:nth-child(odd)]:border-r">
+            {teams.map((t) => <TeamRow key={t.id} t={t} />)}
           </div>
-        </section>
+        </Panel>
       )}
     </div>
   );

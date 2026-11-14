@@ -11,7 +11,7 @@ import { ChallengeCardView } from "@/components/challenge-card";
 import { CopyLink } from "@/components/copy-link";
 import { ConfirmButton, SubmitButton } from "@/components/forms";
 import { TeamForm } from "@/components/team-form";
-import { Empty, SectionHead, VisibilityPill } from "@/components/ui";
+import { Panel, TeamMark, VisibilityPill } from "@/components/ui";
 import { PlusIcon } from "@/components/icons";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string }> };
@@ -57,7 +57,9 @@ export default async function TeamPage({ params, searchParams }: Props) {
           <span className="tag">{members.length} members</span>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-start gap-4">
+            <TeamMark name={t.name} size={64} />
+            <div className="min-w-0">
             <h1 className="display text-5xl uppercase sm:text-6xl">{t.name}</h1>
             {t.description && <p className="mt-1 max-w-2xl whitespace-pre-line text-muted">{t.description}</p>}
             {isMember && (
@@ -66,6 +68,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
                 <span className="ml-2 text-xs">Friends enter it on their Teams page.</span>
               </p>
             )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {isMember && <CopyLink path={`/join/${t.invite_code}`} label="Invite link" />}
@@ -82,44 +85,40 @@ export default async function TeamPage({ params, searchParams }: Props) {
       </header>
 
       {totals.length > 0 && (
-        <section>
-          <SectionHead title="Lifetime" />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+        <Panel flush title="Lifetime totals">
+          <div className="-mb-px -mr-px grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 [&>*]:border-b [&>*]:border-r [&>*]:border-line">
             {totals.map((x) => (
-              <div key={x.exercise_key + x.unit} className="card p-4">
+              <div key={x.exercise_key + x.unit} className="p-4">
                 <div className="eyebrow">{x.exercise}</div>
                 <div className="mt-1 flex items-baseline gap-1.5"><span className="display text-4xl">{fmtCompact(x.total)}</span> <span className="text-sm text-muted">{x.unit}</span></div>
                 <div className="tnum text-xs text-muted">{fmtNum(x.sets)} sets</div>
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="min-w-0 space-y-10">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
           {competing.length > 0 && (
-            <section>
-              <SectionHead title="Competing in" />
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">{competing.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
-            </section>
+            <Panel title="Competing in" actions={<span className="text-xs text-muted">Team-vs-team challenges this team entered</span>}>
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr))]">{competing.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+            </Panel>
           )}
-          <section>
-            <SectionHead title="Team challenges">
-              {isOwner && <Link href="/explore" className="text-sm font-semibold text-muted hover:text-ink">Find a team-vs-team challenge →</Link>}
-            </SectionHead>
+          <Panel
+            title="Team challenges"
+            actions={isOwner && <Link href="/explore" className="text-xs font-semibold text-muted hover:text-ink">Find a team-vs-team challenge →</Link>}
+          >
             {hosted.length ? (
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">{hosted.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr))]">{hosted.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
             ) : (
-              <Empty title="No team challenges yet">{isMember ? "Kick one off with the Team challenge button." : "Join the team to see more."}</Empty>
+              <p className="text-sm text-muted">{isMember ? "No team challenges yet. Kick one off with the Team challenge button." : "Join the team to see more."}</p>
             )}
-          </section>
+          </Panel>
         </div>
 
         <aside className="space-y-6">
-          <section className="card p-4">
-            <h3 className="mb-1 font-semibold">Members</h3>
-            <p className="mb-3 text-xs text-muted">Sorted by sets in the last 7 days</p>
+          <Panel title="Members" actions={<span className="text-xs text-muted">by sets, last 7 days</span>}>
             <ul className="space-y-3">
               {ranked.map((m) => {
                 const w = weeklyBy.get(m.id);
@@ -151,12 +150,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
                 <ConfirmButton action={leaveTeam.bind(null, t.id)} message="Leave this team?" className="text-xs text-muted hover:text-bad">Leave team</ConfirmButton>
               </div>
             )}
-          </section>
+          </Panel>
 
           {isOwner && (
-            <details className="card p-4">
-              <summary className="cursor-pointer font-semibold">Team settings</summary>
-              <div className="mt-4 space-y-6">
+            <Panel title="Team settings">
+              <div className="space-y-6">
                 <TeamForm initial={{ id: t.id, name: t.name, description: t.description, visibility: t.visibility }} />
                 <form action={regenerateTeamInvite.bind(null, t.id)}>
                   <SubmitButton className="btn-ghost w-full text-xs">Reset invite link</SubmitButton>
@@ -165,7 +163,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
                   Delete team
                 </ConfirmButton>
               </div>
-            </details>
+            </Panel>
           )}
         </aside>
       </div>

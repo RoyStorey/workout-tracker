@@ -82,3 +82,48 @@ export function SquadDot({ slot, size = 10 }: { slot: number; size?: number }) {
 export function VisibilityPill({ visibility }: { visibility: "public" | "private" }) {
   return <span className="tag">{visibility === "public" ? "Public" : "Private"}</span>;
 }
+
+/**
+ * A titled container. Every section on a page uses one, so related things
+ * sit together in a box with a header bar and pages read as organized blocks.
+ */
+export function Panel({
+  title,
+  actions,
+  children,
+  flush,
+  className,
+  id,
+}: {
+  title: React.ReactNode;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  /** No body padding: for lists and tables that run edge to edge. */
+  flush?: boolean;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <section id={id} className={cx("card min-w-0 overflow-hidden", className)}>
+      <header className="flex min-h-12 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-line bg-surface-2/40 px-4 py-2.5">
+        <h2 className="display text-xl uppercase">{title}</h2>
+        {actions && <div className="flex items-center gap-2 text-sm">{actions}</div>}
+      </header>
+      <div className={flush ? undefined : "p-4"}>{children}</div>
+    </section>
+  );
+}
+
+/** A square monogram so teams read as teams wherever they're listed. */
+export function TeamMark({ name, size = 36 }: { name: string; size?: number }) {
+  const letters = name.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+  return (
+    <span
+      aria-hidden
+      className="display flex shrink-0 items-center justify-center rounded-md bg-primary text-primary-ink"
+      style={{ width: size, height: size, fontSize: size * 0.45 }}
+    >
+      {letters}
+    </span>
+  );
+}

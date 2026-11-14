@@ -17,9 +17,10 @@ import { APP_NAME } from "@/lib/config";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Avatar } from "@/components/avatar";
 import { JoinByCode } from "@/components/join-code";
+import { TeamRow } from "@/components/team-row";
 import { QuickLog } from "@/components/quick-log";
 import { LiveUpdates } from "@/components/live-updates";
-import { Empty, PaceNote, ProgressBar, SectionHead, SquadDot } from "@/components/ui";
+import { Empty, PaceNote, Panel, ProgressBar, SectionHead, SquadDot } from "@/components/ui";
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -73,7 +74,7 @@ async function Dashboard({ user }: { user: User }) {
       </header>
 
       {active.length > 0 ? (
-        <section className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))]">
+        <section className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr))]">
           {active.map((c) => {
             const battle = c.kind === "battle" || c.kind === "teams";
             const shared = c.goal_type === "shared" && !battle;
@@ -178,13 +179,10 @@ async function Dashboard({ user }: { user: User }) {
         </Empty>
       )}
 
-      <div className="grid items-start gap-8 md:grid-cols-2 xl:grid-cols-3">
-        <section className="min-w-0">
-          <SectionHead title="Your challenges">
-            <Link href="/explore" className="text-sm font-semibold text-muted hover:text-ink">Find more →</Link>
-          </SectionHead>
+      <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <Panel flush title="Your challenges" actions={<Link href="/explore" className="text-xs font-semibold text-muted hover:text-ink">Find more →</Link>}>
           {others.length ? (
-            <ul className="card divide-y divide-line">
+            <ul className="divide-y divide-line">
               {others.map((c) => {
                 const st = challengeStatus(c, today);
                 return (
@@ -205,32 +203,25 @@ async function Dashboard({ user }: { user: User }) {
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted">Upcoming and finished challenges show up here.</p>
+            <p className="p-4 text-sm text-muted">Upcoming and finished challenges show up here.</p>
           )}
-        </section>
+        </Panel>
 
-        <section className="min-w-0">
-          <SectionHead title="Teams">
-            <Link href="/teams/new" className="text-sm font-semibold text-muted hover:text-ink">+ New team</Link>
-          </SectionHead>
-          <div className="card divide-y divide-line">
+        <Panel flush title="Teams" actions={<Link href="/teams/new" className="text-xs font-semibold text-muted hover:text-ink">+ New team</Link>}>
+          <div className="divide-y divide-line">
             {teams.map((t) => (
-              <Link key={t.id} href={`/t/${t.slug}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2/60">
-                <span className="truncate font-semibold">{t.name}</span>
-                <span className="shrink-0 text-xs text-muted">{plural(t.member_count, "member")}</span>
-              </Link>
+              <TeamRow key={t.id} t={t} compact />
             ))}
             <div className="p-4">
               <div className="mb-2 text-xs font-semibold text-muted">{teams.length ? "Join another team" : "Join a team with an invite code"}</div>
               <JoinByCode compact />
             </div>
           </div>
-        </section>
+        </Panel>
 
-        <section className="min-w-0 md:col-span-2 xl:col-span-1">
-          <SectionHead title="Recent activity" />
+        <Panel flush title="Recent activity" className="md:col-span-2 xl:col-span-1">
           {feed.length ? (
-            <ul className="card divide-y divide-line">
+            <ul className="divide-y divide-line">
               {feed.map((it) => (
                 <li key={it.id} className="flex items-center gap-2.5 px-4 py-2.5 text-sm">
                   <Avatar user={it.user} size={24} />
@@ -245,9 +236,9 @@ async function Dashboard({ user }: { user: User }) {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted">When you or your crew log, it shows up here.</p>
+            <p className="p-4 text-sm text-muted">When you or your crew log, it shows up here.</p>
           )}
-        </section>
+        </Panel>
       </div>
     </div>
   );

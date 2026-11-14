@@ -2,7 +2,7 @@ import { eachDay, fmtDay, weekday } from "@/lib/dates";
 import { cx, fmtNum } from "@/lib/format";
 import type { PublicUser, Squad } from "@/lib/queries";
 import { Avatar } from "./avatar";
-import { squadColor } from "./ui";
+import { Panel, squadColor } from "./ui";
 
 type Member = PublicUser & { squad_id: number | null };
 
@@ -45,21 +45,23 @@ export function Spreadsheet({
 
   const stickyLeft = "sticky left-0 z-[1] border-r border-line";
   return (
-    <section>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <h2 className="display text-2xl uppercase">Spreadsheet</h2>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted">Download CSV:</span>
+    <Panel
+      flush
+      title="Spreadsheet"
+      actions={
+        <>
+          <span className="hidden text-xs text-muted sm:inline">Download CSV:</span>
           <a href={exportHref("daily")} className="btn-ghost h-8 px-3 text-xs" download>
             Daily totals
           </a>
           <a href={exportHref("sets")} className="btn-ghost h-8 px-3 text-xs" download>
             Every set
           </a>
-        </div>
-      </div>
-      <div className="card overflow-hidden">
-        <div className="max-h-[560px] overflow-auto">
+        </>
+      }
+    >
+      <div>
+        <div className="max-h-[35rem] overflow-auto">
           <table className="tnum w-full border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
@@ -130,6 +132,6 @@ export function Spreadsheet({
           </span>
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

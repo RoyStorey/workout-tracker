@@ -4,11 +4,11 @@ import { getCurrentUser, getToday } from "@/lib/auth";
 import { activityByDay, entriesForChallenges, getUserByUsername, lifetimeTotals, teamsForUser, visibleChallengesOf } from "@/lib/queries";
 import { addDays } from "@/lib/dates";
 import { badgesFor, challengeStatus, computeStats, type Badge } from "@/lib/stats";
-import { fmtCompact, fmtNum } from "@/lib/format";
+import { fmtCompact, fmtNum, plural } from "@/lib/format";
 import { Avatar } from "@/components/avatar";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Heatmap } from "@/components/heatmap";
-import { Empty, SectionHead } from "@/components/ui";
+import { Panel } from "@/components/ui";
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -54,7 +54,7 @@ export default async function ProfilePage({ params }: Props) {
   const past = challenges.filter((c) => challengeStatus(c, today) === "finished");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
         <Avatar user={u} size={84} />
         <div className="min-w-0 flex-1">
@@ -82,13 +82,12 @@ export default async function ProfilePage({ params }: Props) {
           </div>
         ))}
       </section>
-
-      <section>
-        <SectionHead title="Lifetime" />
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <Panel flush title="Lifetime totals">
         {totals.length ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+          <div className="-mb-px -mr-px grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 [&>*]:border-b [&>*]:border-r [&>*]:border-line">
             {totals.map((t) => (
-              <div key={t.exercise_key + t.unit} className="card p-4">
+              <div key={t.exercise_key + t.unit} className="p-4">
                 <div className="eyebrow">{t.exercise}</div>
                 <div className="mt-1 flex items-baseline gap-1.5"><span className="display text-4xl">{fmtCompact(t.total)}</span> <span className="text-sm text-muted">{t.unit}</span></div>
                 <div className="tnum mt-1 text-xs text-muted">{fmtNum(t.sets)} sets · {fmtNum(t.days)} days · best set {fmtNum(t.best_set)}</div>
@@ -96,23 +95,18 @@ export default async function ProfilePage({ params }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted">Nothing logged yet.</p>
+          <p className="p-4 text-sm text-muted">Nothing logged yet.</p>
         )}
-      </section>
-
-      <section>
-        <SectionHead title="Activity" />
-        <div className="card p-4">
-          <Heatmap days={heat} today={today} />
-        </div>
-      </section>
-
+      </Panel>
+      <Panel title="Activity">
+        <Heatmap days={heat} today={today} />
+      </Panel>
+      </div>
       {earned.size > 0 && (
-        <section>
-          <SectionHead title="Badges" />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-6">
+        <Panel flush title="Badges" actions={<span className="text-xs text-muted">{earned.size} earned</span>}>
+          <div className="-mb-px -mr-px grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-line">
             {[...earned.values()].map((b) => (
-              <div key={b.id} className="card flex items-center gap-3 p-3">
+              <div key={b.id} className="flex items-center gap-3 p-3">
                 <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden className="shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <circle cx="12" cy="9" r="6" />
                   <path d="m8.5 14-1.5 7 5-3 5 3-1.5-7" />
@@ -124,25 +118,24 @@ export default async function ProfilePage({ params }: Props) {
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
       )}
 
-      <section>
-        <SectionHead title="Challenges" />
+      <Panel title="Challenges" actions={<span className="text-xs text-muted">{plural(challenges.length, "challenge")}</span>}>
         {challenges.length === 0 ? (
-          <Empty title="No visible challenges" />
+          <p className="text-sm text-muted">No visible challenges.</p>
         ) : (
           <div className="space-y-6">
-            {live.length > 0 && <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{live.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>}
+            {live.length > 0 && <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr))]">{live.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>}
             {past.length > 0 && (
               <div>
                 <div className="mb-2 text-sm text-muted">Past</div>
-                <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">{past.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
+                <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr))]">{past.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
               </div>
             )}
           </div>
         )}
-      </section>
+      </Panel>
     </div>
   );
 }
