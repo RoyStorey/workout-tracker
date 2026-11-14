@@ -197,9 +197,11 @@ const CHALLENGES = [
   { title: "October Pushup Classic", exercise: "Pushups", unit: "reps", goal: "individual", target: 3000, start: -44, end: -14, vis: "public", members: 8, quick: "10,25,50", inc: 1, setRange: [10, 50] },
   { title: "Fall 50K Steps a Day", exercise: "Walking", unit: "steps", goal: "shared", target: 6_000_000, start: -50, end: -20, vis: "public", members: 10, quick: "1000,2500,5000", inc: 100, setRange: [2000, 9000] },
   { title: "December Dip Challenge", exercise: "Dips", unit: "reps", goal: "individual", target: 2000, start: 5, end: 35, vis: "public", members: 5, quick: "10,15,25", inc: 1, setRange: [10, 30] },
+  { title: "Squadron Pushup Battle", exercise: "Pushups", unit: "reps", goal: "shared", target: null, start: -12, end: 18, vis: "public", members: 18, quick: "10,20,25,50", inc: 1, setRange: [15, 50], battle: { scoring: "average", squads: ["Alpha", "Bravo", "Charlie", "Delta"] } },
+  { title: "Office Plank Wars", exercise: "Plank", unit: "minutes", goal: "shared", target: null, start: -7, end: 14, vis: "private", team: "Office Warriors", quick: "1,2,3", inc: 0.5, setRange: [1, 4], battle: { scoring: "total", squads: ["Sales", "Engineering"] } },
   { title: "Holiday Mile-a-Day", exercise: "Running", unit: "miles", goal: "shared", target: 250, start: 12, end: 42, vis: "public", team: "Run Club 5:30am", quick: "1,2,3", inc: 0.1, setRange: [1, 4] },
 ];
-const JOIN_TITLES = new Set(["November Pushup Mission", "Squad 25K Squats", "Pull-up Showdown", "Plank-a-thon", "October Pushup Classic"]);
+const JOIN_TITLES = new Set(["Squadron Pushup Battle", "November Pushup Mission", "Squad 25K Squats", "Pull-up Showdown", "Plank-a-thon", "October Pushup Classic"]);
 
 const round = (n, inc) => Math.max(inc, Math.round(n / inc) * inc);
 
@@ -216,16 +218,23 @@ const made = tx(() =>
     const res = db
       .prepare(
         `INSERT INTO challenges (slug, title, description, exercise, unit, goal_type, target, start_date, end_date,
-           visibility, invite_code, owner_id, team_id, quick_adds, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           visibility, invite_code, owner_id, team_id, quick_adds, created_at, kind, scoring)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         `${slugify(c.title)}-${code(4)}`, c.title, "", c.exercise, c.unit, c.goal, c.target, start, end,
-        c.vis, code(), owner.id, teamId, c.quick, dayAtTime(start, 8) - 3 * DAY,
+        c.vis, code(), owner.id, teamId, c.quick, dayAtTime(start, 8) - 3 * DAY, c.battle ? "battle" : "standard", c.battle?.scoring ?? "total",
       );
     const cid = Number(res.lastInsertRowid);
-    for (const m of members)
-      db.prepare("INSERT INTO challenge_members (challenge_id, user_id, joined_at) VALUES (?, ?, ?)").run(cid, m.id, dayAtTime(start, 7) - int(1, 5) * DAY);
+    const squadIds = (c.battle?.squads ?? []).map((name, slot) =>
+      Number(db.prepare("INSERT INTO squads (challenge_id, name, slot, created_at) VALUES (?, ?, ?, ?)").run(cid, name, slot, Date.now()).lastInsertRowid),
+    );
+    members.forEach((m, i) => {
+      // Uneven squads on purpose, so "average per member" scoring matters.
+      const pattern = [0, 1, 0, 2, 3, 0, 1, 3, 0, 2, 1, 0, 3];
+      const squad = squadIds.length ? squadIds[pattern[i % pattern.length] % squadIds.length] : null;
+      db.prepare("INSERT INTO challenge_members (challenge_id, user_id, joined_at, squad_id) VALUES (?, ?, ?, ?)").run(cid, m.id, dayAtTime(start, 7) - int(1, 5) * DAY, squad);
+    });
 
     // Daily volume a member "aims" for.
     const days = end ? Math.round((Date.parse(end) - Date.parse(start)) / DAY) + 1 : 60;

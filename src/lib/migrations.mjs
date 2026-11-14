@@ -91,6 +91,22 @@ export const MIGRATIONS = [
 
   // v2: flag demo accounts made by `npm run seed` so `--clear` can remove exactly those.
   `ALTER TABLE users ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;`,
+
+  // v3: team battles. A challenge of kind 'battle' splits members into squads that compete.
+  `
+  ALTER TABLE challenges ADD COLUMN kind TEXT NOT NULL DEFAULT 'standard';
+  ALTER TABLE challenges ADD COLUMN scoring TEXT NOT NULL DEFAULT 'total';
+  ALTER TABLE challenges ADD COLUMN open_squads INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE squads (
+    id INTEGER PRIMARY KEY,
+    challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE UNIQUE INDEX squads_name ON squads(challenge_id, name COLLATE NOCASE);
+  ALTER TABLE challenge_members ADD COLUMN squad_id INTEGER REFERENCES squads(id) ON DELETE SET NULL;
+  `,
 ];
 
 /**

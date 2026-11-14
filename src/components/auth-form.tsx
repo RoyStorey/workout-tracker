@@ -11,7 +11,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
   return (
     <form action={action} className="card mx-auto mt-6 max-w-sm space-y-4 p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{mode === "login" ? "Welcome back" : "Join the grind"}</h1>
+        <h1 className="display text-5xl uppercase">{mode === "login" ? "Welcome back" : "Join the grind"}</h1>
         <p className="mt-1 text-sm text-muted">
           {mode === "login" ? "Log in to keep your streak alive." : "Just a username and password. Takes ten seconds."}
         </p>
@@ -42,9 +42,9 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
       <SubmitButton className="btn-primary w-full py-3">{mode === "login" ? "Log in" : "Create account"}</SubmitButton>
       <p className="text-center text-sm text-muted">
         {mode === "login" ? (
-          <>New here? <Link className="font-medium text-accent hover:underline" href={`/signup${q}`}>Create an account</Link></>
+          <>New here? <Link className="font-medium text-ink hover:underline" href={`/signup${q}`}>Create an account</Link></>
         ) : (
-          <>Already have one? <Link className="font-medium text-accent hover:underline" href={`/login${q}`}>Log in</Link></>
+          <>Already have one? <Link className="font-medium text-ink hover:underline" href={`/login${q}`}>Log in</Link></>
         )}
       </p>
     </form>

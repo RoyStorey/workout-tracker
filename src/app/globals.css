@@ -1,24 +1,39 @@
 @import "tailwindcss";
 
+/*
+  Design tokens. Light and dark are each tuned, not inverted.
+  Ink-on-paper base; colour is reserved for data (blue series, squad colours)
+  and a single signal orange for "live" and streaks.
+*/
 :root {
   color-scheme: light;
-  --bg: #f5f4f0;
+  --bg: #f3f2ee;
   --surface: #ffffff;
-  --surface-2: #efeee9;
-  --ink: #0b0b0b;
-  --muted: #5c5b57;
-  --faint: #8a8983;
-  --line: #e2e0da;
-  --accent: #d4460f;
-  --accent-ink: #ffffff;
-  --accent-soft: #fde7dc;
+  --surface-2: #ecebe6;
+  --ink: #121211;
+  --muted: #5d5c57;
+  --faint: #8b8a84;
+  --line: #e4e2dc;
+  --line-strong: #cfcdc5;
+  --primary: #121211;
+  --primary-ink: #ffffff;
+  --signal: #d9480f;
+  --signal-soft: #fbe9e0;
   --good: #11804a;
   --bad: #c22f2f;
   --series-1: #2a78d6;
   --series-1-wash: rgba(42, 120, 214, 0.1);
   --pace: #a3a29b;
   --grid: #ecebe6;
-  --heat-0: #ecebe6;
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+  --cat-7: #6250d6;
+  --cat-8: #e34948;
+  --heat-0: #e9e8e3;
   --heat-1: #b7d3f6;
   --heat-2: #6da7ec;
   --heat-3: #2a78d6;
@@ -28,23 +43,33 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0e0e0d;
-    --surface: #1a1a19;
-    --surface-2: #242422;
-    --ink: #f0efec;
-    --muted: #b3b2a9;
+    --bg: #0c0c0b;
+    --surface: #161615;
+    --surface-2: #20201e;
+    --ink: #f2f1ed;
+    --muted: #b0afa6;
     --faint: #85847c;
-    --line: #2f2e2b;
-    --accent: #f0602a;
-    --accent-ink: #120700;
-    --accent-soft: #3a1d10;
+    --line: #2a2a27;
+    --line-strong: #3a3935;
+    --primary: #f2f1ed;
+    --primary-ink: #0c0c0b;
+    --signal: #f26b30;
+    --signal-soft: #34190c;
     --good: #3ccf7f;
     --bad: #f07171;
     --series-1: #3987e5;
     --series-1-wash: rgba(57, 135, 229, 0.14);
     --pace: #6b6a64;
-    --grid: #2a2a27;
-    --heat-0: #262624;
+    --grid: #262624;
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+    --cat-6: #0ca30c;
+    --cat-7: #9085e9;
+    --cat-8: #e66767;
+    --heat-0: #232321;
     --heat-1: #104281;
     --heat-2: #1c5cab;
     --heat-3: #3987e5;
@@ -54,23 +79,33 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0e0e0d;
-  --surface: #1a1a19;
-  --surface-2: #242422;
-  --ink: #f0efec;
-  --muted: #b3b2a9;
+  --bg: #0c0c0b;
+  --surface: #161615;
+  --surface-2: #20201e;
+  --ink: #f2f1ed;
+  --muted: #b0afa6;
   --faint: #85847c;
-  --line: #2f2e2b;
-  --accent: #f0602a;
-  --accent-ink: #120700;
-  --accent-soft: #3a1d10;
+  --line: #2a2a27;
+  --line-strong: #3a3935;
+  --primary: #f2f1ed;
+  --primary-ink: #0c0c0b;
+  --signal: #f26b30;
+  --signal-soft: #34190c;
   --good: #3ccf7f;
   --bad: #f07171;
   --series-1: #3987e5;
   --series-1-wash: rgba(57, 135, 229, 0.14);
   --pace: #6b6a64;
-  --grid: #2a2a27;
-  --heat-0: #262624;
+  --grid: #262624;
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
+  --cat-6: #0ca30c;
+  --cat-7: #9085e9;
+  --cat-8: #e66767;
+  --heat-0: #232321;
   --heat-1: #104281;
   --heat-2: #1c5cab;
   --heat-3: #3987e5;
@@ -85,13 +120,15 @@
   --color-muted: var(--muted);
   --color-faint: var(--faint);
   --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
   --color-good: var(--good);
   --color-bad: var(--bad);
   --color-series-1: var(--series-1);
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 html,
@@ -102,41 +139,59 @@ body {
 
 body {
   font-family: var(--font-sans);
+  font-stretch: 100%;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .tnum {
   font-variant-numeric: tabular-nums;
 }
 
+/* Condensed, heavy: titles and the numbers that matter. */
+.display {
+  font-stretch: 72%;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
 @utility card {
-  @apply rounded-2xl border border-line bg-surface;
+  @apply rounded-lg border border-line bg-surface;
 }
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex h-10 select-none items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition active:translate-y-px disabled:pointer-events-none disabled:opacity-40;
 }
 @utility btn-primary {
-  @apply btn bg-accent text-accent-ink hover:brightness-110;
+  @apply btn bg-primary text-primary-ink hover:opacity-85;
 }
 @utility btn-ghost {
-  @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
+  @apply btn border border-line-strong bg-surface text-ink hover:bg-surface-2;
 }
 @utility btn-danger {
-  @apply btn border border-line bg-surface text-bad hover:bg-surface-2;
+  @apply btn border border-line-strong bg-surface text-bad hover:bg-surface-2;
 }
 @utility input {
-  @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base text-ink placeholder:text-faint outline-none focus:border-accent focus:ring-2 focus:ring-accent/20;
+  @apply h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base text-ink outline-none placeholder:text-faint focus:border-ink;
 }
 @utility label {
-  @apply mb-1.5 block text-sm font-medium text-ink;
+  @apply mb-1.5 block text-sm font-semibold text-ink;
 }
 @utility hint {
-  @apply mt-1 text-xs text-muted;
+  @apply mt-1.5 text-xs text-muted;
 }
-@utility pill {
-  @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted;
+@utility eyebrow {
+  @apply text-[11px] font-bold uppercase tracking-[0.09em] text-muted;
 }
-@utility h-section {
-  @apply text-sm font-semibold uppercase tracking-wide text-muted;
+@utility tag {
+  @apply inline-flex items-center gap-1.5 rounded-sm border border-line-strong px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-muted;
+}
+@utility link {
+  @apply font-semibold underline decoration-line-strong underline-offset-[3px] hover:decoration-ink;
 }

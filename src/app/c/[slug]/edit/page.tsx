@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getToday, requireUser } from "@/lib/auth";
-import { getChallengeBySlug, teamsForUser } from "@/lib/queries";
+import { challengeSquads, getChallengeBySlug, teamsForUser } from "@/lib/queries";
 import { deleteChallenge } from "@/lib/actions/challenges";
 import { ChallengeForm } from "@/components/challenge-form";
 import { ConfirmButton } from "@/components/forms";
@@ -16,9 +16,9 @@ export default async function EditChallengePage({ params }: { params: Promise<{ 
   if (!c || c.owner_id !== user.id) notFound();
   const teams = teamsForUser(user.id).map((t) => ({ id: t.id, name: t.name }));
   return (
-    <div className="mx-auto max-w-2xl">
-      <Link href={`/c/${c.slug}`} className="text-sm text-muted hover:text-ink">← Back to challenge</Link>
-      <h1 className="mb-6 mt-2 text-2xl font-bold tracking-tight">Edit challenge</h1>
+    <div className="mx-auto max-w-3xl">
+      <Link href={`/c/${c.slug}`} className="text-sm font-semibold text-muted hover:text-ink">← Back to challenge</Link>
+      <h1 className="display mb-8 mt-3 text-5xl uppercase">Edit challenge</h1>
       <ChallengeForm
         teams={teams}
         today={await getToday()}
@@ -28,7 +28,10 @@ export default async function EditChallengePage({ params }: { params: Promise<{ 
           description: c.description,
           exercise: c.exercise,
           unit: c.unit,
-          goal_type: c.goal_type,
+          format: c.kind === "battle" ? "battle" : c.goal_type,
+          scoring: c.scoring,
+          open_squads: !!c.open_squads,
+          squads: challengeSquads(c.id).map((q) => ({ id: q.id, name: q.name })),
           target: c.target != null ? fmtNum(c.target, 2).replace(/,/g, "") : "",
           start_date: c.start_date,
           end_date: c.end_date ?? "",
@@ -38,7 +41,7 @@ export default async function EditChallengePage({ params }: { params: Promise<{ 
           quick_adds: c.quick_adds.split(",").join(", "),
         }}
       />
-      <div className="card mt-10 border-bad/30 p-5">
+      <div className="mt-14 rounded-lg border border-bad/40 p-5">
         <h2 className="font-semibold text-bad">Danger zone</h2>
         <p className="mb-3 mt-1 text-sm text-muted">Deleting removes the challenge and every logged set for everyone. There&apos;s no undo.</p>
         <ConfirmButton action={deleteChallenge.bind(null, c.id)} message={`Delete "${c.title}" and all its sets?`}>

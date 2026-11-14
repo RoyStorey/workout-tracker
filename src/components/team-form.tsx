@@ -24,7 +24,7 @@ export function TeamForm({ initial }: { initial?: { id: number; name: string; de
           ["private", "Private", "Invite link only."],
           ["public", "Public", "Listed on Explore; anyone can join."],
         ] as const).map(([val, title, desc]) => (
-          <label key={val} className={cx("cursor-pointer rounded-xl border p-3", vis === val ? "border-accent bg-accent-soft/40" : "border-line hover:bg-surface-2")}>
+          <label key={val} className={cx("cursor-pointer rounded-xl border p-3", vis === val ? "border-ink bg-surface-2" : "border-line hover:bg-surface-2")}>
             <input type="radio" name="visibility" value={val} className="sr-only" checked={vis === val} onChange={() => setVis(val)} />
             <div className="text-sm font-semibold">{title}</div>
             <div className="text-xs text-muted">{desc}</div>

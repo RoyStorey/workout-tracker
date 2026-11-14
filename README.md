@@ -5,7 +5,8 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 ## Features
 
 - **Any exercise, any unit, any timeframe**: pushups, miles, plank minutes and so on. Challenges can have an end date or run forever (lifetime trackers).
-- **Two goal types**: *everyone hits the target* (individual race) or *one target, together* (shared team total). The target is optional: leave it blank for a "most wins" leaderboard.
+- **Three formats**: *personal goal* (everyone chases the same number), *group goal* (everyone adds to one total), or *squad battle*. The target is optional: leave it blank for a "most wins" leaderboard.
+- **Squad battles**: split people into up to 8 squads (Alpha, Bravo…) that compete over the timeframe. Score by total, or by average per member so uneven squads stay fair. People pick a squad when they join, the organizer can move anyone, and the organizer doesn't have to be on a squad.
 - **Public or private**: public challenges are listed on Explore. Private ones are visible only through an invite link (or to the hosting team).
 - **Teams**: your regular crew. Host challenges under a team, track combined lifetime totals, and see who has been busiest this week.
 - **Stats**: total and remaining, needed per day, today's target to stay on pace, ahead or behind pace, projected finish date, projected total, streaks, best set, best day, average set, and active days.

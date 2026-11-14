@@ -20,7 +20,12 @@ export type Challenge = {
   team_id: number | null;
   quick_adds: string;
   created_at: number;
+  kind: "standard" | "battle";
+  scoring: "total" | "average";
+  open_squads: number;
 };
+
+export type Squad = { id: number; name: string; slot: number };
 
 export type Team = {
   id: number;
@@ -35,7 +40,7 @@ export type Team = {
 
 export type PublicUser = Pick<User, "id" | "username" | "display_name" | "color">;
 
-export type ChallengeCard = Challenge & { member_count: number; total: number; team_name: string | null; team_slug: string | null };
+export type ChallengeCard = Challenge & { member_count: number; total: number; squad_count: number; team_name: string | null; team_slug: string | null };
 
 const USER_COLS = "u.id, u.username, u.display_name, u.color";
 
@@ -78,10 +83,14 @@ export function canViewChallenge(c: Challenge, userId: number | undefined, key?:
 export function challengeMembers(challengeId: number) {
   return db()
     .prepare(
-      `SELECT ${USER_COLS}, cm.joined_at FROM challenge_members cm JOIN users u ON u.id = cm.user_id
+      `SELECT ${USER_COLS}, cm.joined_at, cm.squad_id FROM challenge_members cm JOIN users u ON u.id = cm.user_id
        WHERE cm.challenge_id = ? ORDER BY cm.joined_at`,
     )
-    .all(challengeId) as (PublicUser & { joined_at: number })[];
+    .all(challengeId) as (PublicUser & { joined_at: number; squad_id: number | null })[];
+}
+
+export function challengeSquads(challengeId: number) {
+  return db().prepare("SELECT id, name, slot FROM squads WHERE challenge_id = ? ORDER BY slot").all(challengeId) as Squad[];
 }
 
 export function challengeEntries(challengeId: number) {
@@ -94,6 +103,7 @@ const CARD_SELECT = `
   SELECT c.*,
     (SELECT COUNT(*) FROM challenge_members m WHERE m.challenge_id = c.id) AS member_count,
     (SELECT COALESCE(SUM(amount), 0) FROM entries e WHERE e.challenge_id = c.id) AS total,
+    (SELECT COUNT(*) FROM squads s WHERE s.challenge_id = c.id) AS squad_count,
     t.name AS team_name, t.slug AS team_slug
   FROM challenges c LEFT JOIN teams t ON t.id = c.team_id`;
 

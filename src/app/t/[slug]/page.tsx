@@ -51,11 +51,11 @@ export default async function TeamPage({ params, searchParams }: Props) {
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <VisibilityPill visibility={t.visibility} />
-          <span className="pill">{members.length} members</span>
+          <span className="tag">{members.length} members</span>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{t.name}</h1>
+            <h1 className="display text-5xl uppercase sm:text-6xl">{t.name}</h1>
             {t.description && <p className="mt-1 max-w-2xl whitespace-pre-line text-muted">{t.description}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -74,7 +74,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
       {totals.length > 0 && (
         <section>
-          <div className="h-section mb-3">Team lifetime totals</div>
+          <div className="eyebrow mb-3">Team lifetime totals</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {totals.map((x) => (
               <div key={x.exercise_key + x.unit} className="card p-4">
@@ -89,7 +89,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section>
-          <div className="h-section mb-3">Challenges</div>
+          <div className="eyebrow mb-3">Challenges</div>
           {challenges.length ? (
             <div className="grid gap-3 sm:grid-cols-2">{challenges.map((c) => <ChallengeCardView key={c.id} c={c} today={today} />)}</div>
           ) : (

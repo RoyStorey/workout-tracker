@@ -7,7 +7,7 @@ export default async function SettingsPage() {
   const user = await requireUser("/settings");
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      <h1 className="display text-5xl uppercase">Settings</h1>
       <section className="card p-5">
         <h2 className="mb-4 font-semibold">Profile</h2>
         <ProfileForm user={user} />

@@ -20,9 +20,9 @@ export function KudosButton({ entryId, count, mine, disabled }: { entryId: numbe
         })
       }
       className={cx(
-        "flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition",
-        state.mine ? "border-accent/40 bg-accent-soft text-accent" : "border-line text-muted",
-        disabled ? "cursor-default opacity-70" : "hover:border-accent/40 hover:text-accent active:scale-95",
+        "flex shrink-0 items-center gap-1 rounded px-1.5 py-1 text-xs font-semibold transition",
+        state.mine ? "text-ink" : "text-faint",
+        disabled ? "cursor-default" : "hover:bg-surface-2 hover:text-ink active:translate-y-px",
         disabled && state.count === 0 && "invisible",
       )}
     >

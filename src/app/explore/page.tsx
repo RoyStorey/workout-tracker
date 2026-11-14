@@ -29,7 +29,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Explore</h1>
+        <h1 className="display text-5xl uppercase">Explore</h1>
         <p className="text-sm text-muted">
           {fmtCompact(s.users)} athletes · {fmtCompact(s.sets)} sets logged · {fmtCompact(s.teams)} teams
         </p>
@@ -44,7 +44,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
           <Link
             key={t.id}
             href={`/explore?${new URLSearchParams({ tab: t.id, ...(q ? { q } : {}) })}`}
-            className={cx("-mb-px border-b-2 px-3 py-2 text-sm font-medium", status === t.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink")}
+            className={cx("-mb-px border-b-2 px-3 py-2 text-sm font-medium", status === t.id ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink")}
           >
             {t.label} <span className="text-faint">{all.filter((c) => challengeStatus(c, today) === t.id).length}</span>
           </Link>
@@ -60,10 +60,10 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
 
       {teams.length > 0 && (
         <section className="pt-4">
-          <div className="h-section mb-3">Public teams</div>
+          <div className="eyebrow mb-3">Public teams</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {teams.map((t) => (
-              <Link key={t.id} href={`/t/${t.slug}`} className="card p-4 hover:border-accent/50">
+              <Link key={t.id} href={`/t/${t.slug}`} className="card p-4 hover:border-line-strong">
                 <div className="font-semibold">{t.name}</div>
                 {t.description && <p className="mt-0.5 line-clamp-2 text-sm text-muted">{t.description}</p>}
                 <div className="mt-2 text-xs text-muted">{plural(t.member_count, "member")} · {plural(t.challenge_count, "challenge")}</div>

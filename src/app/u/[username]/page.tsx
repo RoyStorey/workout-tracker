@@ -8,7 +8,7 @@ import { fmtCompact, fmtNum } from "@/lib/format";
 import { Avatar } from "@/components/avatar";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Heatmap } from "@/components/heatmap";
-import { Empty } from "@/components/ui";
+import { Empty, SectionHead } from "@/components/ui";
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -58,32 +58,39 @@ export default async function ProfilePage({ params }: Props) {
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
         <Avatar user={u} size={84} />
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{u.display_name}</h1>
+          <h1 className="display text-5xl uppercase">{u.display_name}</h1>
           <div className="text-sm text-muted">@{u.username} · joined {new Date(u.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
           {u.bio && <p className="mt-2 text-sm">{u.bio}</p>}
           {teams.length > 0 && (
             <div className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
-              {teams.map((t) => <Link key={t.id} href={`/t/${t.slug}`} className="pill hover:text-ink">{t.name}</Link>)}
+              {teams.map((t) => <Link key={t.id} href={`/t/${t.slug}`} className="tag hover:text-ink">{t.name}</Link>)}
             </div>
           )}
         </div>
         {isMe && <Link href="/settings" className="btn-ghost">Edit profile</Link>}
       </header>
 
-      <section className="grid grid-cols-3 gap-2">
-        <div className="card p-4 text-center"><div className="tnum text-2xl font-bold">{challenges.length}</div><div className="text-xs text-muted">challenges</div></div>
-        <div className="card p-4 text-center"><div className="tnum text-2xl font-bold">{bestStreak}</div><div className="text-xs text-muted">best streak</div></div>
-        <div className="card p-4 text-center"><div className="tnum text-2xl font-bold">{wins}</div><div className="text-xs text-muted">wins</div></div>
+      <section className="grid grid-cols-3 divide-x divide-line border-y border-line">
+        {([
+          [challenges.length, "challenges"],
+          [bestStreak, "best streak"],
+          [wins, "wins"],
+        ] as const).map(([n, label]) => (
+          <div key={label} className="py-4 text-center">
+            <div className="display text-4xl">{n}</div>
+            <div className="eyebrow mt-1">{label}</div>
+          </div>
+        ))}
       </section>
 
       <section>
-        <div className="h-section mb-3">Lifetime totals</div>
+        <SectionHead title="Lifetime" />
         {totals.length ? (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {totals.map((t) => (
               <div key={t.exercise_key + t.unit} className="card p-4">
-                <div className="text-sm font-medium text-muted">{t.exercise}</div>
-                <div className="tnum mt-0.5 text-2xl font-bold">{fmtCompact(t.total)} <span className="text-sm font-medium text-muted">{t.unit}</span></div>
+                <div className="eyebrow">{t.exercise}</div>
+                <div className="mt-1 flex items-baseline gap-1.5"><span className="display text-4xl">{fmtCompact(t.total)}</span> <span className="text-sm text-muted">{t.unit}</span></div>
                 <div className="tnum mt-1 text-xs text-muted">{fmtNum(t.sets)} sets · {fmtNum(t.days)} days · best set {fmtNum(t.best_set)}</div>
               </div>
             ))}
@@ -93,18 +100,23 @@ export default async function ProfilePage({ params }: Props) {
         )}
       </section>
 
-      <section className="card p-4">
-        <div className="h-section mb-3">Activity</div>
-        <Heatmap days={heat} today={today} />
+      <section>
+        <SectionHead title="Activity" />
+        <div className="card p-4">
+          <Heatmap days={heat} today={today} />
+        </div>
       </section>
 
       {earned.size > 0 && (
         <section>
-          <div className="h-section mb-3">Badges</div>
+          <SectionHead title="Badges" />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[...earned.values()].map((b) => (
               <div key={b.id} className="card flex items-center gap-3 p-3">
-                <span className="text-2xl">{b.icon}</span>
+                <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden className="shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="9" r="6" />
+                  <path d="m8.5 14-1.5 7 5-3 5 3-1.5-7" />
+                </svg>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold">{b.name}{b.count > 1 && <span className="text-muted"> ×{b.count}</span>}</div>
                   <div className="truncate text-xs text-muted">{b.desc}</div>
@@ -116,7 +128,7 @@ export default async function ProfilePage({ params }: Props) {
       )}
 
       <section>
-        <div className="h-section mb-3">Challenges</div>
+        <SectionHead title="Challenges" />
         {challenges.length === 0 ? (
           <Empty title="No visible challenges" />
         ) : (

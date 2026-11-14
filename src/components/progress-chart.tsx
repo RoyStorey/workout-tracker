@@ -96,11 +96,11 @@ export function ProgressChart({
   );
 
   return (
-    <div className="card p-4">
+    <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">{title}</h3>
+        <h3 className="text-sm font-semibold">{title}</h3>
         <div className="flex items-center gap-4 text-xs text-muted">
-          <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-series-1" /> Total</span>
+          <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-series-1" /> Actual</span>
           {hasPace && <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--pace)]" /> Even pace</span>}
         </div>
       </div>
@@ -178,7 +178,7 @@ export function ProgressChart({
               >
                 <div className="mb-1 font-semibold">
                   {fmtDay(h.day, { weekday: "short", month: "short", day: "numeric" })}
-                  {h.day === today && <span className="ml-1 text-accent">· today</span>}
+                  {h.day === today && <span className="ml-1 text-muted">· today</span>}
                 </div>
                 {h.cumulative == null ? (
                   <div className="text-muted">Hasn&apos;t happened yet</div>

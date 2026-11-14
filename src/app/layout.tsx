@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/archivo/wdth.css";
 import "./globals.css";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import { getCurrentUser } from "@/lib/auth";
@@ -16,8 +17,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f4f0" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e0e0d" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f2ee" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0c0b" },
   ],
 };
 
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh">
         <TzSync />
         <Nav user={user} />
-        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-4 sm:pb-16 sm:pt-6">{children}</main>
+        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-5 sm:px-6 sm:pb-20 sm:pt-8">{children}</main>
         {user && <BottomNav username={user.username} />}
       </body>
     </html>
