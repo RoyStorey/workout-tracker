@@ -10,7 +10,7 @@ export function Feed({ items, unit, viewerId, showChallenge }: { items: FeedItem
   return (
     <ul className="divide-y divide-line">
       {items.map((it) => (
-        <li key={it.id} className="flex items-start gap-3 py-3">
+        <li key={it.id} className={`flex items-start gap-3 py-3 ${Date.now() - it.created_at < 20_000 ? "animate-[fresh_3s_ease-out]" : ""}`}>
           <Link href={`/u/${it.user.username}`}>
             <Avatar user={it.user} size={34} />
           </Link>

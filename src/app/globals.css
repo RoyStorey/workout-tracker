@@ -162,6 +162,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Brief highlight on activity that just arrived live. */
+@keyframes fresh {
+  from {
+    background: color-mix(in srgb, var(--series-1) 14%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
 @utility card {
   @apply rounded-lg border border-line bg-surface;
 }

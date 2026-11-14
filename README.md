@@ -13,6 +13,7 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 - **Charts**: cumulative total vs. even pace, plus daily bars, with hover tooltips and a table view.
 - **Spreadsheet view**: one row per day and one column per member, like the old sheet.
 - **Fast logging**: one-tap quick-add buttons (set per challenge), custom amounts, backdating, notes, undo, and a **tally counter** you can tap with your nose during pushups.
+- **Real time**: when anyone logs, edits, joins, or gives kudos, every open page watching that challenge updates within a second, with no refresh. Uses Server-Sent Events; nothing extra to run.
 - **Social**: activity feed, kudos, leaderboards (all-time, this week, today), badges (🔥 streaks, 👑 MVP, 🏆 goal crushed, ⚡ finished early, and more).
 - **Profiles**: lifetime totals per exercise, an activity heatmap, and earned badges.
 - **Mobile-first**: bottom tab bar, installable to your home screen (PWA manifest), dark mode (follows the system or toggles from the account menu).

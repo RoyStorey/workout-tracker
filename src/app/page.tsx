@@ -17,6 +17,7 @@ import { APP_NAME } from "@/lib/config";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Feed } from "@/components/feed";
 import { QuickLog } from "@/components/quick-log";
+import { LiveUpdates } from "@/components/live-updates";
 import { Empty, PaceNote, ProgressBar, SectionHead, SquadDot } from "@/components/ui";
 
 export default async function Home() {
@@ -40,6 +41,7 @@ async function Dashboard({ user }: { user: User }) {
 
   return (
     <div className="space-y-10">
+      <LiveUpdates ids={[...active, ...upcoming].map((c) => c.id)} />
       <header>
         <div className="eyebrow">{dateLine}</div>
         <h1 className="display mt-1 text-5xl uppercase sm:text-6xl">Today</h1>

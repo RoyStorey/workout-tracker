@@ -34,6 +34,7 @@ import { ProgressChart } from "@/components/progress-chart";
 import { QuickLog } from "@/components/quick-log";
 import { PaceNote, ProgressBar, SquadDot, Stat, StatusTag, squadColor } from "@/components/ui";
 import { TrashIcon } from "@/components/icons";
+import { LiveUpdates } from "@/components/live-updates";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string; board?: string }> };
 
@@ -124,6 +125,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-8">
+      <LiveUpdates ids={[c.id]} inviteKey={k} />
       {/* ---------- Header ---------- */}
       <header>
         <div className="flex flex-wrap items-center gap-2">

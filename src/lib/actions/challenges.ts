@@ -9,6 +9,7 @@ import { addDays, diffDays, isDay } from "../dates";
 import { randomCode, slugify } from "../ids";
 import { canViewChallenge, getChallengeById, isChallengeMember, isTeamMember } from "../queries";
 import type { FormState } from "./auth";
+import { notifyChallenge } from "../live";
 
 const day = z.string().refine(isDay, "Pick a valid date");
 
@@ -159,12 +160,14 @@ export async function updateChallenge(_: FormState, form: FormData): Promise<For
     );
     syncSquads(c.id, v.squads);
   })();
+  notifyChallenge(c.id);
   redirect(`/c/${c.slug}`);
 }
 
 export async function deleteChallenge(id: number) {
   const { c } = await requireOwner(id);
   db().prepare("DELETE FROM challenges WHERE id = ?").run(c.id);
+  notifyChallenge(c.id);
   redirect("/");
 }
 
@@ -192,6 +195,7 @@ export async function joinChallenge(id: number, key: string | null, squadId?: nu
        ON CONFLICT(challenge_id, user_id) DO UPDATE SET squad_id = COALESCE(excluded.squad_id, squad_id)`,
     )
     .run(c.id, user.id, now(), squad);
+  notifyChallenge(c.id);
   redirect(`/c/${c.slug}${key && c.visibility === "private" ? `?k=${key}` : ""}`);
 }
 
@@ -218,6 +222,7 @@ export async function createSquad(id: number, key: string | null, form: FormData
        ON CONFLICT(challenge_id, user_id) DO UPDATE SET squad_id = excluded.squad_id`,
     ).run(c.id, user.id, now(), res.lastInsertRowid);
   }
+  notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);
 }
 
@@ -235,6 +240,7 @@ export async function setSquad(challengeId: number, userId: number, form: FormDa
   }
   if (squadId && !db().prepare("SELECT 1 FROM squads WHERE id = ? AND challenge_id = ?").get(squadId, c.id)) return;
   db().prepare("UPDATE challenge_members SET squad_id = ? WHERE challenge_id = ? AND user_id = ?").run(squadId, c.id, userId);
+  notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);
 }
 
@@ -248,6 +254,7 @@ export async function leaveChallenge(id: number) {
     d.prepare("DELETE FROM entries WHERE challenge_id = ? AND user_id = ?").run(c.id, user.id);
     d.prepare("DELETE FROM challenge_members WHERE challenge_id = ? AND user_id = ?").run(c.id, user.id);
   })();
+  notifyChallenge(c.id);
   redirect(`/c/${c.slug}`);
 }
 
@@ -259,6 +266,7 @@ export async function removeMember(challengeId: number, userId: number) {
     d.prepare("DELETE FROM entries WHERE challenge_id = ? AND user_id = ?").run(c.id, userId);
     d.prepare("DELETE FROM challenge_members WHERE challenge_id = ? AND user_id = ?").run(c.id, userId);
   })();
+  notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);
 }
 
@@ -283,6 +291,7 @@ export async function logEntry(challengeId: number, amount: number, dayStr: stri
   const res = db()
     .prepare("INSERT INTO entries (challenge_id, user_id, amount, day, note, created_at) VALUES (?, ?, ?, ?, ?, ?)")
     .run(c.id, user.id, Math.round(amount * 100) / 100, dayStr, note.trim().slice(0, 140), now());
+  notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);
   revalidatePath("/");
   return { ok: true, id: Number(res.lastInsertRowid) };
@@ -291,11 +300,12 @@ export async function logEntry(challengeId: number, amount: number, dayStr: stri
 export async function deleteEntry(entryId: number) {
   const user = await requireUser();
   const row = db()
-    .prepare("SELECT e.user_id, c.slug, c.owner_id FROM entries e JOIN challenges c ON c.id = e.challenge_id WHERE e.id = ?")
-    .get(entryId) as { user_id: number; slug: string; owner_id: number | null } | undefined;
+    .prepare("SELECT e.user_id, c.id, c.slug, c.owner_id FROM entries e JOIN challenges c ON c.id = e.challenge_id WHERE e.id = ?")
+    .get(entryId) as { user_id: number; id: number; slug: string; owner_id: number | null } | undefined;
   if (!row) return;
   if (row.user_id !== user.id && row.owner_id !== user.id) throw new Error("Not your set");
   db().prepare("DELETE FROM entries WHERE id = ?").run(entryId);
+  notifyChallenge(row.id);
   revalidatePath(`/c/${row.slug}`);
   revalidatePath("/");
 }
@@ -312,5 +322,6 @@ export async function toggleKudos(entryId: number) {
   const d = db();
   const had = d.prepare("DELETE FROM kudos WHERE entry_id = ? AND user_id = ?").run(entryId, user.id);
   if (had.changes === 0) d.prepare("INSERT INTO kudos (entry_id, user_id, created_at) VALUES (?, ?, ?)").run(entryId, user.id, now());
+  notifyChallenge(row.id);
   revalidatePath(`/c/${row.slug}`);
 }
