@@ -7,11 +7,12 @@ import { CompassIcon, HomeIcon, PlusIcon, UserIcon, UsersIcon } from "./icons";
 import { NavLink } from "./nav-link";
 import { ThemeToggle } from "./theme-toggle";
 
-/** Four strokes and a slash: a tally of five. */
-export function TallyMark({ size = 22 }: { size?: number }) {
+/** Goalpost: two uprights, a crossbar and the post, with the ball through the middle. */
+export function GoalPostMark({ size = 22 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round">
-      <path d="M5 4v16M9.5 4v16M14 4v16M18.5 4v16M2.5 16.5 21.5 7.5" />
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 2.5v10h14v-10M12 12.5v9M8.5 21.5h7" />
+      <circle cx="12" cy="7" r="2.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -19,7 +20,7 @@ export function TallyMark({ size = 22 }: { size?: number }) {
 export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label={`${APP_NAME} home`}>
-      <TallyMark />
+      <GoalPostMark />
       <span className="display text-[22px] uppercase leading-none">{APP_NAME}</span>
     </Link>
   );

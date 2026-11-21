@@ -49,7 +49,7 @@ async function Dashboard({ user }: { user: User }) {
   let streak = 0;
   for (let d = daySet.has(today) ? today : addDays(today, -1); daySet.has(d); d = addDays(d, -1)) streak++;
   const others = [...upcoming, ...finished].slice(0, 7);
-  const dateLine = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: tz }).format(new Date());
+  const dateLine = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric", timeZone: tz }).format(new Date());
 
   return (
     <div className="space-y-10">
@@ -256,12 +256,12 @@ async function Landing() {
     <div className="space-y-16 sm:space-y-20">
       <section className="pt-4 sm:pt-12">
         <h1 className="display max-w-4xl text-[64px] uppercase sm:text-[104px]">
-          Count every rep.
+          Set the goal.
           <br />
-          <span className="text-muted">Together.</span>
+          <span className="text-muted">Hit it together.</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg text-muted">
-          Set a goal, send your friends a link, and log as you go. {APP_NAME} keeps the score: what&apos;s left, what you need each day, and who&apos;s carrying the team.
+          For units, teams and training partners. Set the target, send the link, and log every set. {APP_NAME} keeps score: what&apos;s left, what&apos;s needed each day, and who&apos;s carrying the team.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/signup" className="btn-primary h-12 px-6 text-base">Start a challenge</Link>
@@ -284,9 +284,9 @@ async function Landing() {
 
       <section className="grid gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-3">
         {[
-          ["01", "Make a challenge", "One exercise, a goal, and dates. 5,000 pushups in November. 100 miles by spring. Or no end at all."],
-          ["02", "Send the link", "Friends sign up with a username and password and they're in. Public, or private with an invite link."],
-          ["03", "Log and compete", "Tap +25 after every set. Standings, pace, streaks and charts update for everyone."],
+          ["01", "Set the objective", "One exercise, a target and a timeframe. 5,000 pushups in November. 100 miles by spring. Or no end date at all."],
+          ["02", "Send the link", "People sign up with a username and password and they're in. Public, or private with an invite link or code."],
+          ["03", "Log and compete", "Tap +25 after every set. Standings, pace, streaks and charts update live for everyone."],
         ].map(([n, title, body]) => (
           <div key={n} className="bg-surface p-6">
             <div className="display text-3xl text-faint">{n}</div>
@@ -298,9 +298,9 @@ async function Landing() {
 
       <section className="flex flex-col gap-6 rounded-lg bg-primary p-6 text-primary-ink sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div className="max-w-xl">
-          <div className="display text-4xl uppercase">Squad battles</div>
+          <div className="display text-4xl uppercase">Squad vs squad. Team vs team.</div>
           <p className="mt-2 opacity-75">
-            Running a unit, a gym or an office? Split everyone into squads and let them fight it out for a month. Score by total, or by average per member so uneven squads stay fair.
+            Running a squadron, a company or a gym? Split everyone into squads, or pit whole teams against each other, for a month. Score by total, or by average per member so uneven squads stay fair.
           </p>
         </div>
         <Link href="/signup?next=/challenges/new" className="btn h-12 shrink-0 bg-primary-ink px-6 text-base text-primary hover:opacity-90">Set one up</Link>

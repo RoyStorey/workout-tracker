@@ -1,6 +1,6 @@
-# RepRally
+# GoalPost
 
-Group fitness challenges with friends. Pick an exercise, set a goal and a timeframe, share the link, and grind it out together. RepRally does the spreadsheet math for you.
+Group fitness challenges for units, teams and training partners. Pick an exercise, set a goal and a timeframe, share the link, and grind it out together. GoalPost does the spreadsheet math for you.
 
 ## Features
 
@@ -72,7 +72,7 @@ npm run backup                                         # copies the DB to data/b
 |---|---|---|
 | `PORT` | `3000` | Port to listen on |
 | `DATABASE_PATH` | `./data/app.db` | Where the SQLite file lives |
-| `NEXT_PUBLIC_APP_NAME` | `RepRally` | Rename the app (set it at build time) |
+| `NEXT_PUBLIC_APP_NAME` | `GoalPost` | Rename the app (set it at build time) |
 | `COOKIE_SECURE` | auto | `true` forces secure cookies. Leave unset over plain HTTP, otherwise login won't stick. It's detected automatically behind an HTTPS proxy. |
 | `ALLOWED_ORIGINS` | none | Extra origins (comma-separated) for form submissions if you put it behind a proxy or domain whose host differs |
 
