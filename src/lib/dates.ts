@@ -50,7 +50,7 @@ export function weekday(day: string): number {
 }
 
 export function fmtDay(day: string, opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) {
-  return new Intl.DateTimeFormat("en-GB", { ...opts, timeZone: "UTC" }).format(new Date(toMs(day)));
+  return new Intl.DateTimeFormat("en-US", { ...opts, timeZone: "UTC" }).format(new Date(toMs(day)));
 }
 
 export function fmtRange(start: string, end: string | null) {
@@ -69,5 +69,5 @@ export function timeAgo(ms: number): string {
   if (h < 24) return `${h}h ago`;
   const d = Math.round(h / 24);
   if (d < 30) return `${d}d ago`;
-  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

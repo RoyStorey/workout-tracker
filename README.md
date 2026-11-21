@@ -1,6 +1,6 @@
 # GoalPost
 
-Group fitness challenges for units, teams and training partners. Pick an exercise, set a goal and a timeframe, share the link, and grind it out together. GoalPost does the spreadsheet math for you.
+Group fitness challenges with friends. Pick an exercise, set a goal and a timeframe, share the link, and grind it out together. GoalPost does the spreadsheet math for you.
 
 ## Features
 
