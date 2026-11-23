@@ -187,6 +187,57 @@ body {
   }
 }
 
+/* ---------- Streak flair ---------- */
+@keyframes flicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.07, 0.95) rotate(-3deg); }
+  50% { transform: scale(0.96, 1.06) rotate(2deg); }
+  75% { transform: scale(1.04, 0.98) rotate(-1deg); }
+}
+@keyframes glowpulse {
+  0%, 100% { filter: drop-shadow(0 0 1px var(--tier)); }
+  50% { filter: drop-shadow(0 0 5px var(--tier)); }
+}
+@keyframes shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: -200% 50%; }
+}
+@keyframes ringpulse {
+  0%, 100% { box-shadow: var(--ring), 0 0 4px var(--tier); }
+  50% { box-shadow: var(--ring), 0 0 14px var(--tier); }
+}
+.streak-flicker svg { transform-origin: 50% 90%; animation: flicker 1.8s ease-in-out infinite; }
+.streak-glow svg { animation: flicker 1.8s ease-in-out infinite, glowpulse 2.4s ease-in-out infinite; }
+.streak-shimmer .streak-num {
+  background: linear-gradient(90deg, #8f6200, #d99a00, #ffd75e, #d99a00, #8f6200);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.6s linear infinite;
+}
+.avatar-glow { animation: ringpulse 2.4s ease-in-out infinite; }
+
+/* Level-up celebration */
+@keyframes confetti-fall {
+  from { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+  to { transform: translate3d(var(--drift), 105vh, 0) rotate(var(--spin)); opacity: 0.9; }
+}
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes rise {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streak-flicker svg, .streak-glow svg, .streak-shimmer .streak-num, .avatar-glow, .confetti { animation: none !important; }
+  .confetti { display: none; }
+}
+
 @utility card {
   @apply rounded-lg border border-line bg-surface;
 }

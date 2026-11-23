@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { deleteEntry, logEntry } from "@/lib/actions/challenges";
+import { deleteEntry, logEntry, type StreakNews } from "@/lib/actions/challenges";
+import { tierFor } from "@/lib/streaks";
+import { FlameGlyph } from "./streak";
+import { StreakCelebration } from "./streak-celebration";
 import { cx, fmtNum } from "@/lib/format";
 
 function localToday() {
@@ -39,7 +42,8 @@ export function QuickLog({
   const [today, setToday] = useState("");
   const [more, setMore] = useState(false);
   const [tally, setTally] = useState<number | null>(null);
-  const [toast, setToast] = useState<{ msg: string; id?: number; error?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; id?: number; error?: boolean; streak?: StreakNews } | null>(null);
+  const [party, setParty] = useState<StreakNews | null>(null);
 
   useEffect(() => {
     const t = localToday();
@@ -64,7 +68,8 @@ export function QuickLog({
         setNote("");
         setTally(null);
         const other = day && today && day !== today;
-        setToast({ msg: `Logged ${fmtNum(n)} ${unit}${other ? ` for ${day}` : ""}`, id: res.id });
+        setToast({ msg: `Logged ${fmtNum(n)} ${unit}${other ? ` for ${day}` : ""}`, id: res.id, streak: res.streak.extended ? res.streak : undefined });
+        if (res.streak.tierUp) setParty(res.streak);
       } else setToast({ msg: res.error, error: true });
     });
   };
@@ -78,9 +83,12 @@ export function QuickLog({
   const backdated = !!day && !!today && day !== today;
   const buttons = quickAdds.slice(0, compact ? 4 : 6);
 
+  const celebration = party?.tierUp ? <StreakCelebration tier={party.tierUp} days={party.days} onDone={() => setParty(null)} /> : null;
+
   if (tally != null)
     return (
       <div className="space-y-3">
+        {celebration}
         <button
           type="button"
           onClick={() => {
@@ -166,6 +174,7 @@ export function QuickLog({
         </div>
       )}
 
+      {celebration}
       {toast && (
         <div
           role="status"
@@ -174,7 +183,15 @@ export function QuickLog({
             toast.error ? "bg-bad text-white" : "bg-primary text-primary-ink",
           )}
         >
-          <span>{toast.msg}</span>
+          <span className="flex min-w-0 flex-col">
+            <span>{toast.msg}</span>
+            {toast.streak && (
+              <span className="mt-0.5 flex items-center gap-1 text-xs font-medium opacity-90">
+                <FlameGlyph color={tierFor(toast.streak.days)?.color ?? "#f5a524"} size={13} />
+                {toast.streak.days === 1 ? "Streak started. Come back tomorrow." : `${toast.streak.days}-day streak!`}
+              </span>
+            )}
+          </span>
           {toast.id && (
             <button type="button" onClick={() => undo(toast.id!)} className="underline underline-offset-2">
               Undo

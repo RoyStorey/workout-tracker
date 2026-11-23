@@ -26,7 +26,7 @@ export function Logo() {
   );
 }
 
-export function Nav({ user }: { user: User | null }) {
+export function Nav({ user, streak }: { user: User | null; streak?: number }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-md" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       <div className="mx-auto flex h-14 max-w-[84rem] items-center gap-8 px-4 sm:px-6 lg:px-10 2xl:px-14">
@@ -46,7 +46,7 @@ export function Nav({ user }: { user: User | null }) {
               </Link>
               <details className="relative">
                 <summary className="flex cursor-pointer list-none items-center rounded-full [&::-webkit-details-marker]:hidden">
-                  <Avatar user={user} size={32} />
+                  <Avatar user={user} size={32} streak={streak} />
                   <span className="sr-only">Account menu</span>
                 </summary>
                 <div className="card absolute right-0 mt-2 w-56 overflow-hidden p-1 shadow-lg">

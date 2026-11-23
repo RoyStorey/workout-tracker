@@ -8,6 +8,7 @@ import { Composer } from "./composer";
 import { ConfirmButton } from "./forms";
 import { ReactionBar } from "./reaction-bar";
 import { Panel } from "./ui";
+import { StreakFlame } from "./streak";
 
 /** The Activity panel: conversation and logged sets in one timeline, with reactions. */
 export function Activity({
@@ -20,6 +21,7 @@ export function Activity({
   canTalk,
   isOrganizer,
   joinHint,
+  streaks,
 }: {
   challengeId: number;
   items: TimelineItem[];
@@ -30,6 +32,8 @@ export function Activity({
   canTalk: boolean;
   isOrganizer: boolean;
   joinHint: string;
+  /** Live day streak by user id, for flair. */
+  streaks: Record<number, number>;
 }) {
   const fresh = (t: number) => Date.now() - t < 20_000;
   return (
@@ -62,11 +66,12 @@ export function Activity({
               {it.type === "message" ? (
                 <div className="flex gap-2.5">
                   <Link href={`/u/${it.user.username}`} className="shrink-0">
-                    <Avatar user={it.user} size={30} />
+                    <Avatar user={it.user} size={30} streak={streaks[it.user.id]} />
                   </Link>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
                       <Link href={`/u/${it.user.username}`} className="truncate text-sm font-semibold hover:underline">{it.user.display_name}</Link>
+                      <StreakFlame days={streaks[it.user.id] ?? 0} />
                       <span className="shrink-0 text-[11px] text-faint">{timeAgo(it.created_at)}</span>
                       {(it.user.id === viewer?.id || isOrganizer) && (
                         <span className="ml-auto shrink-0">
@@ -88,6 +93,7 @@ export function Activity({
                   <div className="min-w-0 flex-1">
                     <div className="text-sm">
                       <Link href={`/u/${it.user.username}`} className="font-semibold hover:underline">{it.user.display_name}</Link>{" "}
+                      <StreakFlame days={streaks[it.user.id] ?? 0} />{" "}
                       <span className="text-muted">logged</span> <span className="tnum font-semibold">{fmtNum(it.amount)} {unit}</span>
                       <span className="text-[11px] text-faint">
                         {" · "}

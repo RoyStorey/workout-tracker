@@ -15,6 +15,7 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 - **Spreadsheet view**: one row per day and one column per person, with heat shading, frozen headers, a totals row, and CSV download (daily totals or every set).
 - **Fast logging**: one-tap quick-add buttons (set per challenge), custom amounts, backdating, notes, undo, and a **tally counter** you can tap with your nose during pushups.
 - **Real time**: when anyone logs, edits, joins, or gives kudos, every open page watching that challenge updates within a second, with no refresh. Uses Server-Sent Events; nothing extra to run.
+- **Day streaks**: log anything on consecutive days and a flame appears next to your name everywhere (standings, activity, profile, nav), with a glowing avatar ring. It climbs through tiers (Spark 3, On Fire 7, Blazing 14, Blue Flame 30, Plasma 60, Supernova 100, Eternal 365) with a full-screen celebration on each level-up, a "streak ends at midnight" warning, a Hot streaks board for your crew, and a trophy shelf of tiers you've reached. Miss a day and the flair disappears immediately.
 - **Conversation**: each challenge's Activity panel mixes chat with logged sets (filter to All, Chat, or Sets). React to messages and sets with 👍 🔥 💪 👏 😂; hover to see who reacted. Authors can delete their messages, and organizers can delete any.
 - **Social**: leaderboards (all-time, this week, today), badges, streaks.
 - **Profiles**: lifetime totals per exercise, an activity heatmap, and earned badges.

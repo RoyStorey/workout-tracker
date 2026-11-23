@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/archivo/wdth.css";
 import "./globals.css";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getToday } from "@/lib/auth";
+import { streaksFor } from "@/lib/queries";
 import { Nav, BottomNav } from "@/components/nav";
 import { TzSync } from "@/components/tz-sync";
 
@@ -27,6 +28,7 @@ const themeScript = `try{var t=localStorage.getItem('theme');if(t==='light'||t==
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const myStreak = user ? streaksFor([user.id], await getToday()).get(user.id)?.current : undefined;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -34,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-dvh">
         <TzSync />
-        <Nav user={user} />
+        <Nav user={user} streak={myStreak} />
         <main className="mx-auto w-full max-w-[84rem] px-4 pb-28 pt-5 sm:px-6 sm:pb-20 sm:pt-8 lg:px-10 2xl:px-14">{children}</main>
         {user && <BottomNav username={user.username} />}
       </body>

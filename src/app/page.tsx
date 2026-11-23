@@ -3,6 +3,9 @@ import { getCurrentUser, getTimeZone, getToday, type User } from "@/lib/auth";
 import {
   challengeSquads,
   challengesForUser,
+  crewIds,
+  streaksFor,
+  usersByIds,
   entriesForChallenges,
   friendsFeed,
   publicChallenges,
@@ -12,10 +15,12 @@ import {
 import { db } from "@/lib/db";
 import { challengeStatus, computeStats } from "@/lib/stats";
 import { addDays, diffDays, fmtDay, timeAgo } from "@/lib/dates";
-import { fmtCompact, fmtNum, fmtPct, plural } from "@/lib/format";
+import { cx, fmtCompact, fmtNum, fmtPct, plural } from "@/lib/format";
 import { APP_NAME } from "@/lib/config";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Avatar } from "@/components/avatar";
+import { FlameGlyph, StreakFlame } from "@/components/streak";
+import { nextTier, tierFor } from "@/lib/streaks";
 import { JoinByCode } from "@/components/join-code";
 import { TeamRow } from "@/components/team-row";
 import { QuickLog } from "@/components/quick-log";
@@ -46,8 +51,21 @@ async function Dashboard({ user }: { user: User }) {
   const daySet = new Set(recentDays.map((d) => d.day));
   const weekSets = recentDays.filter((d) => d.day > addDays(today, -7)).reduce((a, d) => a + d.sets, 0);
   const weekDays = recentDays.filter((d) => d.day > addDays(today, -7)).length;
-  let streak = 0;
-  for (let d = daySet.has(today) ? today : addDays(today, -1); daySet.has(d); d = addDays(d, -1)) streak++;
+  // Live day streaks for me and everyone I share a challenge with
+  const crew = crewIds(user.id);
+  const crewStreaks = streaksFor([user.id, ...crew], today);
+  const myStreak = crewStreaks.get(user.id)!;
+  const streak = myStreak.current;
+  const myTier = tierFor(streak);
+  const nextUp = nextTier(streak);
+  const hotAll = usersByIds([...crewStreaks].filter(([, st]) => st.current >= 2).map(([id]) => id))
+    .map((u) => ({ user: u, st: crewStreaks.get(u.id)! }))
+    .sort((a, b) => b.st.current - a.st.current || Number(a.st.atRisk) - Number(b.st.atRisk));
+  const hot = hotAll.slice(0, 8);
+  const myRank = hotAll.findIndex((h) => h.user.id === user.id);
+  // Always show where you stand, even if you're outside the top 8
+  const meRow = myRank >= 8 ? { ...hotAll[myRank], rank: myRank + 1 } : null;
+  void daySet;
   const others = [...upcoming, ...finished].slice(0, 7);
   const dateLine = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: tz }).format(new Date());
 
@@ -63,15 +81,40 @@ async function Dashboard({ user }: { user: User }) {
           {([
             [weekSets, "sets this week"],
             [`${weekDays}/7`, "days active"],
-            [streak, streak === 1 ? "day streak" : "day streak"],
           ] as const).map(([n, label]) => (
             <div key={label} className="px-4 py-2 first:pl-0 sm:px-6">
               <dd className="display text-4xl">{n}</dd>
               <dt className="eyebrow mt-0.5 whitespace-nowrap">{label}</dt>
             </div>
           ))}
+          <Link href={`/u/${user.username}`} className="group px-4 py-2 sm:px-6" title={myTier ? `${myTier.name}` : "Log 3 days in a row to light your flame"}>
+            <dd className="display flex items-center gap-1.5 text-4xl">
+              <span className={myTier ? cx("streak-flicker", myTier.glow && "streak-glow") : undefined} style={{ ["--tier" as string]: myTier?.color }}>
+                <FlameGlyph color={myTier?.color ?? (streak ? "#f5a524" : "var(--line-strong)")} size={30} />
+              </span>
+              <span className={cx(myTier?.shimmer && "streak-shimmer")}>
+                <span className="streak-num">{streak}</span>
+              </span>
+            </dd>
+            <dt className="eyebrow mt-0.5 whitespace-nowrap group-hover:text-ink">{myTier ? myTier.name : "day streak"}</dt>
+          </Link>
         </dl>
       </header>
+
+      {myStreak.atRisk && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 px-4 py-3" style={{ borderColor: myTier?.color ?? "#f5a524" }}>
+          <div className="flex items-center gap-3">
+            <FlameGlyph color={myTier?.color ?? "#f5a524"} size={28} />
+            <div>
+              <div className="font-bold">Your {streak}-day streak ends at midnight</div>
+              <div className="text-sm text-muted">
+                Log anything in any challenge today to keep it{myTier ? ` and hold onto ${myTier.name}` : ""}.
+                {nextUp && streak + 1 >= nextUp.min && <b className="text-ink"> Today&apos;s log unlocks {nextUp.name}!</b>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {active.length > 0 ? (
         <section className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,21rem),1fr))]">
@@ -179,7 +222,38 @@ async function Dashboard({ user }: { user: User }) {
         </Empty>
       )}
 
-      <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid items-start gap-6 md:grid-cols-2 2xl:grid-cols-4">
+        <Panel flush title="Hot streaks" actions={<span className="text-xs text-muted">Your crew, days in a row</span>}>
+          {hot.length ? (
+            <ol className="divide-y divide-line">
+              {hot.map(({ user: u, st }, i) => (
+                <li key={u.id}>
+                  <Link href={`/u/${u.username}`} className={cx("flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2/60", u.id === user.id && "bg-surface-2/50")}>
+                    <span className="display w-5 text-center text-lg text-faint">{i + 1}</span>
+                    <Avatar user={u} size={28} streak={st.current} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      {u.id === user.id ? "You" : u.display_name}
+                      {st.atRisk && <span className="ml-1.5 text-[11px] font-normal text-faint">not yet today</span>}
+                    </span>
+                    {tierFor(st.current) ? <StreakFlame days={st.current} size="md" /> : <span className="tnum text-sm font-semibold text-muted">{st.current}d</span>}
+                  </Link>
+                </li>
+              ))}
+              {meRow && (
+                <li className="border-t-2 border-line">
+                  <Link href={`/u/${user.username}`} className="flex items-center gap-3 bg-surface-2/50 px-4 py-2.5 hover:bg-surface-2/60">
+                    <span className="display w-5 text-center text-lg text-faint">{meRow.rank}</span>
+                    <Avatar user={meRow.user} size={28} streak={meRow.st.current} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">You</span>
+                    {tierFor(meRow.st.current) ? <StreakFlame days={meRow.st.current} size="md" /> : <span className="tnum text-sm font-semibold text-muted">{meRow.st.current}d</span>}
+                  </Link>
+                </li>
+              )}
+            </ol>
+          ) : (
+            <p className="p-4 text-sm text-muted">Nobody&apos;s on a streak yet. Log two days in a row to show up here.</p>
+          )}
+        </Panel>
         <Panel flush title="Your challenges" actions={<Link href="/explore" className="text-xs font-semibold text-muted hover:text-ink">Find more →</Link>}>
           {others.length ? (
             <ul className="divide-y divide-line">
@@ -219,7 +293,7 @@ async function Dashboard({ user }: { user: User }) {
           </div>
         </Panel>
 
-        <Panel flush title="Recent activity" className="md:col-span-2 xl:col-span-1">
+        <Panel flush title="Recent activity">
           {feed.length ? (
             <ul className="divide-y divide-line">
               {feed.map((it) => (

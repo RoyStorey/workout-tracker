@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser, getToday } from "@/lib/auth";
-import { canViewTeam, challengesEnteredBy, getTeamBySlug, lifetimeTotals, teamChallenges, teamMembers } from "@/lib/queries";
+import { canViewTeam, challengesEnteredBy, streaksFor, getTeamBySlug, lifetimeTotals, teamChallenges, teamMembers } from "@/lib/queries";
 import { deleteTeam, joinTeam, leaveTeam, regenerateTeamInvite, removeTeamMember, transferTeam } from "@/lib/actions/teams";
 import { db } from "@/lib/db";
 import { addDays } from "@/lib/dates";
@@ -47,6 +47,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
     )
     .all(addDays(today, -6), t.id, t.id, t.id) as { user_id: number; sets: number; days: number }[];
   const weeklyBy = new Map(weekly.map((w) => [w.user_id, w]));
+  const teamStreaks = streaksFor(members.map((m) => m.id), today);
   const ranked = [...members].sort((a, b) => (weeklyBy.get(b.id)?.sets ?? 0) - (weeklyBy.get(a.id)?.sets ?? 0));
 
   return (
@@ -124,7 +125,7 @@ export default async function TeamPage({ params, searchParams }: Props) {
                 const w = weeklyBy.get(m.id);
                 return (
                   <li key={m.id} className="flex items-center justify-between gap-2">
-                    <UserChip user={m} sub={m.role === "owner" ? "Owner" : undefined} />
+                    <UserChip user={m} sub={m.role === "owner" ? "Owner" : undefined} streak={teamStreaks.get(m.id)?.current} />
                     <div className="flex items-center gap-2">
                       <span className="tnum text-right text-xs text-muted">{w ? `${w.sets} sets · ${w.days}d` : "quiet"}</span>
                       {isOwner && m.id !== user!.id && (

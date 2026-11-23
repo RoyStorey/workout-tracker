@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, getToday } from "@/lib/auth";
-import { activityByDay, entriesForChallenges, getUserByUsername, lifetimeTotals, teamsForUser, visibleChallengesOf } from "@/lib/queries";
+import { activityByDay, entriesForChallenges, getUserByUsername, lifetimeTotals, streaksFor, teamsForUser, visibleChallengesOf } from "@/lib/queries";
 import { addDays } from "@/lib/dates";
 import { badgesFor, challengeStatus, computeStats, type Badge } from "@/lib/stats";
 import { fmtCompact, fmtNum, plural } from "@/lib/format";
@@ -9,6 +9,8 @@ import { Avatar } from "@/components/avatar";
 import { ChallengeCardView } from "@/components/challenge-card";
 import { Heatmap } from "@/components/heatmap";
 import { Panel } from "@/components/ui";
+import { StreakFlame } from "@/components/streak";
+import { StreakCard } from "@/components/streak-card";
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -27,6 +29,7 @@ export default async function ProfilePage({ params }: Props) {
   const isMe = viewer?.id === u.id;
   const totals = lifetimeTotals("user", u.id);
   const heat = activityByDay(u.id, addDays(today, -7 * 27));
+  const streak = streaksFor([u.id], today).get(u.id)!;
   const challenges = visibleChallengesOf(u.id, viewer?.id);
   const teams = teamsForUser(u.id).filter((t) => t.visibility === "public" || isMe);
 
@@ -56,9 +59,12 @@ export default async function ProfilePage({ params }: Props) {
   return (
     <div className="space-y-6">
       <header className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-        <Avatar user={u} size={84} />
+        <Avatar user={u} size={84} streak={streak.current} />
         <div className="min-w-0 flex-1">
-          <h1 className="display text-5xl uppercase">{u.display_name}</h1>
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+            <h1 className="display text-5xl uppercase">{u.display_name}</h1>
+            <StreakFlame days={streak.current} size="lg" atRisk={streak.atRisk} />
+          </div>
           <div className="text-sm text-muted">@{u.username} · joined {new Date(u.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
           {u.bio && <p className="mt-2 text-sm">{u.bio}</p>}
           {teams.length > 0 && (
@@ -73,7 +79,7 @@ export default async function ProfilePage({ params }: Props) {
       <section className="grid grid-cols-3 divide-x divide-line border-y border-line">
         {([
           [challenges.length, "challenges"],
-          [bestStreak, "best streak"],
+          [Math.max(bestStreak, streak.longest), "best streak"],
           [wins, "wins"],
         ] as const).map(([n, label]) => (
           <div key={label} className="py-4 text-center">
@@ -82,6 +88,7 @@ export default async function ProfilePage({ params }: Props) {
           </div>
         ))}
       </section>
+      <StreakCard streak={streak} activeDays={new Set(heat.map((h) => h.day))} today={today} isMe={isMe} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
       <Panel flush title="Lifetime totals">
         {totals.length ? (

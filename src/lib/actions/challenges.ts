@@ -7,7 +7,8 @@ import { db, now } from "../db";
 import { getCurrentUser, getToday, rateLimit, requireUser } from "../auth";
 import { addDays, diffDays, isDay } from "../dates";
 import { randomCode, slugify } from "../ids";
-import { canViewChallenge, getChallengeById, isChallengeMember, isTeamMember } from "../queries";
+import { canViewChallenge, getChallengeById, isChallengeMember, isTeamMember, streaksFor } from "../queries";
+import { tierFor } from "../streaks";
 import type { FormState } from "./auth";
 import { notifyChallenge } from "../live";
 
@@ -335,7 +336,8 @@ export async function withdrawTeam(challengeId: number, squadId: number) {
 
 // ---------- logging ----------
 
-export type LogResult = { ok: true; id: number } | { ok: false; error: string };
+export type StreakNews = { days: number; extended: boolean; tierUp: { name: string; min: number; color: string } | null };
+export type LogResult = { ok: true; id: number; streak: StreakNews } | { ok: false; error: string };
 
 export async function logEntry(challengeId: number, amount: number, dayStr: string, note: string): Promise<LogResult> {
   const user = await getCurrentUser();
@@ -347,17 +349,30 @@ export async function logEntry(challengeId: number, amount: number, dayStr: stri
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return { ok: false, error: "Enter a positive amount" };
   if (!isDay(dayStr)) return { ok: false, error: "Bad date" };
   // Allow a day of slack for time-zone differences between the browser and the server cookie.
-  const latest = addDays(await getToday(), 1);
+  const today = await getToday();
+  const latest = addDays(today, 1);
   if (dayStr > latest) return { ok: false, error: "Can't log sets in the future" };
   if (dayStr < c.start_date) return { ok: false, error: "That's before the challenge starts" };
   if (c.end_date && dayStr > c.end_date) return { ok: false, error: "That's after the challenge ended" };
+  const before = streaksFor([user.id], today).get(user.id)!.current;
   const res = db()
     .prepare("INSERT INTO entries (challenge_id, user_id, amount, day, note, created_at) VALUES (?, ?, ?, ?, ?, ?)")
     .run(c.id, user.id, Math.round(amount * 100) / 100, dayStr, note.trim().slice(0, 140), now());
+  const after = streaksFor([user.id], today).get(user.id)!.current;
+  const tb = tierFor(before);
+  const ta = tierFor(after);
   notifyChallenge(c.id);
   revalidatePath(`/c/${c.slug}`);
   revalidatePath("/");
-  return { ok: true, id: Number(res.lastInsertRowid) };
+  return {
+    ok: true,
+    id: Number(res.lastInsertRowid),
+    streak: {
+      days: after,
+      extended: after > before,
+      tierUp: ta && ta.min > (tb?.min ?? 0) ? { name: ta.name, min: ta.min, color: ta.color } : null,
+    },
+  };
 }
 
 export async function deleteEntry(entryId: number) {

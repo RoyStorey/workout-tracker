@@ -3,6 +3,7 @@ import { db } from "./db";
 import type { User } from "./auth";
 import type { EntryLite } from "./stats";
 import { REACTIONS, type ReactionSummary } from "./reactions";
+import { computeStreak, type Streak } from "./streaks";
 
 export type Challenge = {
   id: number;
@@ -367,4 +368,39 @@ export function findByInviteCode(code: string) {
   const t = db().prepare("SELECT slug FROM teams WHERE invite_code = ?").get(code) as { slug: string } | undefined;
   if (t) return { kind: "team" as const, slug: t.slug };
   return null;
+}
+
+// ---------- day streaks ----------
+
+/** Streaks for many people at once (one query), keyed by user id. */
+export function streaksFor(userIds: number[], today: string): Map<number, Streak> {
+  const out = new Map<number, Streak>();
+  const ids = [...new Set(userIds)];
+  if (!ids.length) return out;
+  const rows = db()
+    .prepare(`SELECT DISTINCT user_id, day FROM entries WHERE user_id IN (${ids.map(() => "?").join(",")}) AND day <= ?`)
+    .all(...ids, today) as { user_id: number; day: string }[];
+  const byUser = new Map<number, string[]>();
+  for (const r of rows) byUser.set(r.user_id, [...(byUser.get(r.user_id) ?? []), r.day]);
+  for (const id of ids) out.set(id, computeStreak(byUser.get(id) ?? [], today));
+  return out;
+}
+
+/** Everyone who shares a challenge with this user (including them), for the Hot streaks board. */
+export function crewIds(userId: number): number[] {
+  return (
+    db()
+      .prepare(
+        `SELECT DISTINCT user_id FROM challenge_members
+         WHERE challenge_id IN (SELECT challenge_id FROM challenge_members WHERE user_id = ?)`,
+      )
+      .all(userId) as { user_id: number }[]
+  ).map((r) => r.user_id);
+}
+
+export function usersByIds(ids: number[]): PublicUser[] {
+  if (!ids.length) return [];
+  return db()
+    .prepare(`SELECT id, username, display_name, color FROM users WHERE id IN (${ids.map(() => "?").join(",")})`)
+    .all(...ids) as PublicUser[];
 }

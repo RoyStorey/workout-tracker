@@ -10,6 +10,7 @@ import {
   challengeMembers,
   challengeSquads,
   getChallengeBySlug,
+  streaksFor,
   teamsForUser,
 } from "@/lib/queries";
 import { computeStats, type Stats } from "@/lib/stats";
@@ -38,6 +39,7 @@ import { PaceNote, Panel, ProgressBar, SquadDot, Stat, StatusTag, squadColor } f
 import { TrashIcon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { Spreadsheet } from "@/components/spreadsheet";
+import { StreakFlame } from "@/components/streak";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string; board?: string; feed?: string }> };
 
@@ -110,6 +112,9 @@ export default async function ChallengePage({ params, searchParams }: Props) {
   const focus: Stats = !shared && !battle && mine ? mine.stats : group;
   const canLog = isMember && group.status !== "upcoming" && (!battle || !!mySquad);
   const timeline = challengeTimeline(c.id, user?.id, feedFilter, 40);
+  // Everyone's live day streak (across all challenges) for flair next to their name.
+  const streakMap = streaksFor([...members.map((m) => m.id), ...timeline.map((t) => t.user.id)], today);
+  const streakOf = (id: number) => streakMap.get(id)?.current ?? 0;
   const pageHref = (extra: Record<string, string | undefined>) => {
     const q = new URLSearchParams();
     const all = { k, board, feed: feedFilter === "all" ? undefined : feedFilter, ...extra };
@@ -424,20 +429,22 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   return (
                     <li key={r.user.id} className={cx("flex items-center gap-3 px-4 py-3", r.user.id === user?.id && "bg-surface-2/60")}>
                       <span className={cx("display w-6 text-center text-xl", i === 0 && r.total > 0 ? "text-ink" : "text-faint")}>{i + 1}</span>
-                      <Avatar user={r.user} size={32} />
+                      <Avatar user={r.user} size={32} streak={streakOf(r.user.id)} />
                       <div className="min-w-0 flex-1">
-                        <Link href={`/u/${r.user.username}`} className="block truncate font-semibold hover:underline">
-                          {r.user.display_name}
-                          {r.user.id === user?.id && <span className="ml-1.5 text-xs font-medium text-muted">you</span>}
-                        </Link>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <Link href={`/u/${r.user.username}`} className="truncate font-semibold hover:underline">
+                            {r.user.display_name}
+                          </Link>
+                          <StreakFlame days={streakOf(r.user.id)} />
+                          {r.user.id === user?.id && <span className="text-xs font-medium text-muted">you</span>}
+                        </div>
                         <div className="flex items-center gap-1.5 truncate text-xs text-muted">
                           {sq && (
                             <>
                               <SquadDot slot={sq.slot} size={8} /> {sq.name}
                             </>
                           )}
-                          {sq && r.stats.currentStreak > 1 && " · "}
-                          {r.stats.currentStreak > 1 && <span>{r.stats.currentStreak}-day streak</span>}
+
                           {pct != null && pct >= 1 && <span className="font-semibold text-good"> · Done</span>}
                         </div>
                         {pct != null && period === "all" && <ProgressBar value={pct} className="mt-1.5 h-1" />}
@@ -548,6 +555,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
             canTalk={isMember || isOwner}
             isOrganizer={isOwner}
             joinHint={user ? "Join the challenge to chat and react." : "Log in and join to chat and react."}
+            streaks={Object.fromEntries([...streakMap].map(([id, st]) => [id, st.current]))}
           />
 
           {teamsMode && mySquad && enterable.length > 0 && (
