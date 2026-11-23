@@ -372,19 +372,3 @@ export async function deleteEntry(entryId: number) {
   revalidatePath(`/c/${row.slug}`);
   revalidatePath("/");
 }
-
-export async function toggleKudos(entryId: number) {
-  const user = await getCurrentUser();
-  if (!user) return;
-  const row = db()
-    .prepare("SELECT c.id, c.slug FROM entries e JOIN challenges c ON c.id = e.challenge_id WHERE e.id = ?")
-    .get(entryId) as { id: number; slug: string } | undefined;
-  if (!row) return;
-  const c = getChallengeById(row.id)!;
-  if (!canViewChallenge(c, user.id)) return;
-  const d = db();
-  const had = d.prepare("DELETE FROM kudos WHERE entry_id = ? AND user_id = ?").run(entryId, user.id);
-  if (had.changes === 0) d.prepare("INSERT INTO kudos (entry_id, user_id, created_at) VALUES (?, ?, ?)").run(entryId, user.id, now());
-  notifyChallenge(row.id);
-  revalidatePath(`/c/${row.slug}`);
-}

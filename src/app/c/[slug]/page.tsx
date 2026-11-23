@@ -5,7 +5,8 @@ import { getCurrentUser, getToday } from "@/lib/auth";
 import {
   canViewChallenge,
   challengeEntries,
-  challengeFeed,
+  challengeTimeline,
+  type TimelineFilter,
   challengeMembers,
   challengeSquads,
   getChallengeBySlug,
@@ -30,7 +31,7 @@ import { Avatar } from "@/components/avatar";
 import { BattleChart } from "@/components/battle-chart";
 import { ConfirmButton, SubmitButton } from "@/components/forms";
 import { CopyLink } from "@/components/copy-link";
-import { Feed } from "@/components/feed";
+import { Activity } from "@/components/activity";
 import { ProgressChart } from "@/components/progress-chart";
 import { QuickLog } from "@/components/quick-log";
 import { PaceNote, Panel, ProgressBar, SquadDot, Stat, StatusTag, squadColor } from "@/components/ui";
@@ -38,7 +39,7 @@ import { TrashIcon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { Spreadsheet } from "@/components/spreadsheet";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string; board?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ k?: string; board?: string; feed?: string }> };
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -53,10 +54,11 @@ type Period = "all" | "week" | "today";
 
 export default async function ChallengePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { k, board } = await searchParams;
+  const { k, board, feed: feedParam } = await searchParams;
   const c = getChallengeBySlug(slug);
   const user = await getCurrentUser();
   if (!c || !canViewChallenge(c, user?.id, k)) notFound();
+  const feedFilter: TimelineFilter = feedParam === "chat" || feedParam === "sets" ? feedParam : "all";
 
   const today = await getToday();
   const members = challengeMembers(c.id);
@@ -107,7 +109,14 @@ export default async function ChallengePage({ params, searchParams }: Props) {
 
   const focus: Stats = !shared && !battle && mine ? mine.stats : group;
   const canLog = isMember && group.status !== "upcoming" && (!battle || !!mySquad);
-  const feed = challengeFeed(c.id, user?.id, 15);
+  const timeline = challengeTimeline(c.id, user?.id, feedFilter, 40);
+  const pageHref = (extra: Record<string, string | undefined>) => {
+    const q = new URLSearchParams();
+    const all = { k, board, feed: feedFilter === "all" ? undefined : feedFilter, ...extra };
+    for (const [key, v] of Object.entries(all)) if (v) q.set(key, v);
+    const qs = q.toString();
+    return `/c/${c.slug}${qs ? `?${qs}` : ""}`;
+  };
   const myRecent = mine ? [...(byUser.get(mine.user.id) ?? [])].reverse().slice(0, 20) : [];
   const invitePath = c.visibility === "private" ? `/join/${c.invite_code}` : `/c/${c.slug}`;
   const owner = c.owner_id ? (db().prepare("SELECT username, display_name FROM users WHERE id = ?").get(c.owner_id) as { username: string; display_name: string } | undefined) : undefined;
@@ -396,7 +405,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                   <Link
                     key={p}
                     scroll={false}
-                    href={`/c/${c.slug}?${new URLSearchParams({ ...(k ? { k } : {}), ...(p !== "all" ? { board: p } : {}) })}`}
+                    href={pageHref({ board: p === "all" ? undefined : p })}
                     className={cx("border-b-2 px-2.5 py-1", period === p ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink")}
                   >
                     {p === "all" ? "All time" : p === "week" ? "This week" : "Today"}
@@ -529,11 +538,17 @@ export default async function ChallengePage({ params, searchParams }: Props) {
 
         {/* ---------- Sidebar ---------- */}
         <aside className="min-w-0 space-y-6">
-          <Panel flush title="Activity" actions={<span className="flex items-center gap-1.5 text-xs text-muted"><span className="h-1.5 w-1.5 rounded-full bg-good" /> Live</span>}>
-            <div className="max-h-[40rem] overflow-auto px-4">
-              <Feed items={feed} unit={unit} viewerId={isMember ? user?.id : undefined} />
-            </div>
-          </Panel>
+          <Activity
+            challengeId={c.id}
+            items={timeline}
+            unit={unit}
+            filter={feedFilter}
+            filterHref={(f) => pageHref({ feed: f === "all" ? undefined : f })}
+            viewer={user ? { id: user.id, display_name: user.display_name } : undefined}
+            canTalk={isMember || isOwner}
+            isOrganizer={isOwner}
+            joinHint={user ? "Join the challenge to chat and react." : "Log in and join to chat and react."}
+          />
 
           {teamsMode && mySquad && enterable.length > 0 && (
             <Panel title="Your other teams">

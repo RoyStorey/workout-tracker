@@ -15,7 +15,8 @@ Group fitness challenges with friends. Pick an exercise, set a goal and a timefr
 - **Spreadsheet view**: one row per day and one column per person, with heat shading, frozen headers, a totals row, and CSV download (daily totals or every set).
 - **Fast logging**: one-tap quick-add buttons (set per challenge), custom amounts, backdating, notes, undo, and a **tally counter** you can tap with your nose during pushups.
 - **Real time**: when anyone logs, edits, joins, or gives kudos, every open page watching that challenge updates within a second, with no refresh. Uses Server-Sent Events; nothing extra to run.
-- **Social**: activity feed, kudos, leaderboards (all-time, this week, today), badges (🔥 streaks, 👑 MVP, 🏆 goal crushed, ⚡ finished early, and more).
+- **Conversation**: each challenge's Activity panel mixes chat with logged sets (filter to All, Chat, or Sets). React to messages and sets with 👍 🔥 💪 👏 😂; hover to see who reacted. Authors can delete their messages, and organizers can delete any.
+- **Social**: leaderboards (all-time, this week, today), badges, streaks.
 - **Profiles**: lifetime totals per exercise, an activity heatmap, and earned badges.
 - **Mobile-first**: bottom tab bar, installable to your home screen (PWA manifest), dark mode (follows the system or toggles from the account menu).
 

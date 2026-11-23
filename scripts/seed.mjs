@@ -1,4 +1,4 @@
-// Fills the site with demo data: users, teams, challenges, a few weeks of logged sets, kudos.
+// Fills the site with demo data: users, teams, challenges, a few weeks of logged sets, chat and reactions.
 //
 //   npm run seed                      add demo data
 //   npm run seed -- --join <username> also put your real account in some demo challenges
@@ -208,6 +208,16 @@ const round = (n, inc) => Math.max(inc, Math.round(n / inc) * inc);
 
 let entryCount = 0;
 let kudosCount = 0;
+let messageCount = 0;
+const EMOJI = ["👍", "🔥", "💪", "👏", "😂"];
+const CHAT = [
+  "Who's ready?", "Day one done. Let's go!", "My arms are not ready for this", "Anyone else doing these before work?",
+  "Pace check: we're behind, pick it up 😅", "That last set was brutal", "Who logged 300 yesterday?? Show-off.",
+  "Rest day for me, back at it tomorrow", "Weekend push, let's close the gap", "Halfway there!",
+  "Doing mine at lunch", "Loser buys pizza, right?", "New PR today", "Can we talk about how sore I am",
+  "Keep it up everyone", "Morning crew checking in", "Don't let the streak die", "Just caught up on two days",
+  "Nice work this week team", "Final stretch, no excuses",
+];
 const made = tx(() =>
   CHALLENGES.map((c) => {
     const start = addDays(today, c.start);
@@ -289,19 +299,32 @@ const made = tx(() =>
         }
       }
     }
-    // Kudos on a slice of sets, from other demo members.
-    for (const e of ids) {
-      if (rand() > 0.18) continue;
-      for (const giver of sample(members.filter((m) => m.id !== e.user && !m.real), int(1, 3))) {
-        db.prepare("INSERT OR IGNORE INTO kudos (entry_id, user_id, created_at) VALUES (?, ?, ?)").run(e.id, giver.id, e.createdAt + int(5, 300) * 60_000);
-        kudosCount++;
+    // Reactions on a slice of sets, from other demo members.
+    const react = (kind, id, author, at) => {
+      for (const giver of sample(members.filter((m) => m.id !== author && !m.real), int(1, 3))) {
+        const r = db
+          .prepare("INSERT OR IGNORE INTO reactions (kind, target_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)")
+          .run(kind, id, giver.id, rand() < 0.5 ? "👍" : pick(EMOJI), Math.min(Date.now(), at + int(5, 300) * 60_000));
+        kudosCount += Number(r.changes);
       }
+    };
+    for (const e of ids) if (rand() < 0.18) react("entry", e.id, e.user, e.createdAt);
+    // Some conversation: a few messages a week, mostly reacted to.
+    const chatDays = Math.max(0, Math.round((Math.min(Date.now(), Date.parse((end ?? today) + "T23:00:00")) - Date.parse(start + "T00:00:00")) / DAY));
+    const talkers = members.filter((m) => !m.real);
+    for (let i = 0; i < Math.min(24, Math.ceil(chatDays * 0.7)) && talkers.length; i++) {
+      const at = dayAtTime(addDays(start, int(0, Math.max(0, chatDays - 1))), int(6, 22));
+      if (at > Date.now()) continue;
+      const who = pick(talkers);
+      const m = db.prepare("INSERT INTO messages (challenge_id, user_id, body, created_at) VALUES (?, ?, ?, ?)").run(cid, who.id, pick(CHAT), at);
+      messageCount++;
+      if (rand() < 0.7) react("message", Number(m.lastInsertRowid), who.id, at);
     }
     return { title: c.title, members: members.length };
   }),
 );
 
-console.log(`Seeded ${demoUsers.length} demo users, ${teams.length} teams, ${made.length} challenges, ${entryCount} sets, ${kudosCount} kudos.`);
+console.log(`Seeded ${demoUsers.length} demo users, ${teams.length} teams, ${made.length} challenges, ${entryCount} sets, ${messageCount} messages, ${kudosCount} reactions.`);
 if (joiner) console.log(`Added "${joiner.username}" to: ${[...JOIN_TITLES].join(", ")} and the Garage Gym Crew team (with sample history).`);
 console.log(`Demo logins: any of ${demoUsers.slice(0, 3).map((u) => u.username).join(", ")}… with password "${DEMO_PASSWORD}".`);
 console.log('Remove it all later with: npm run seed -- --clear');

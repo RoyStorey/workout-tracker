@@ -115,6 +115,39 @@ export const MIGRATIONS = [
   CREATE UNIQUE INDEX squads_team ON squads(challenge_id, team_id) WHERE team_id IS NOT NULL;
   UPDATE teams SET slug = lower(hex(randomblob(4)));
   `,
+
+  // v5: conversation on each challenge, and emoji reactions on both messages and
+  // logged sets. Existing kudos carry over as a clap.
+  `
+  CREATE TABLE messages (
+    id INTEGER PRIMARY KEY,
+    challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX messages_challenge ON messages(challenge_id, created_at);
+
+  CREATE TABLE reactions (
+    kind TEXT NOT NULL CHECK (kind IN ('entry', 'message')),
+    target_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (kind, target_id, user_id, emoji)
+  );
+  CREATE INDEX reactions_target ON reactions(kind, target_id);
+  CREATE TRIGGER reactions_entry_gone AFTER DELETE ON entries BEGIN
+    DELETE FROM reactions WHERE kind = 'entry' AND target_id = OLD.id;
+  END;
+  CREATE TRIGGER reactions_message_gone AFTER DELETE ON messages BEGIN
+    DELETE FROM reactions WHERE kind = 'message' AND target_id = OLD.id;
+  END;
+
+  INSERT INTO reactions (kind, target_id, user_id, emoji, created_at)
+    SELECT 'entry', entry_id, user_id, '👏', created_at FROM kudos;
+  DROP TABLE kudos;
+  `,
 ];
 
 /**

@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "./db";
 import type { User } from "./auth";
 import type { EntryLite } from "./stats";
+import { REACTIONS, type ReactionSummary } from "./reactions";
 
 export type Challenge = {
   id: number;
@@ -178,8 +179,6 @@ export type FeedItem = {
   day: string;
   note: string;
   created_at: number;
-  kudos: number;
-  mine: number;
   user: PublicUser;
   challenge_title?: string;
   challenge_slug?: string;
@@ -195,18 +194,79 @@ const toFeed = (rows: FeedRow[]): FeedItem[] =>
     user: { id: uid, username, display_name, color },
   }));
 
-export function challengeFeed(challengeId: number, viewerId: number | undefined, limit = 30) {
+// ---------- activity timeline (sets + conversation) ----------
+
+export type TimelineItem = { id: number; user: PublicUser; created_at: number; reactions: ReactionSummary[] } & (
+  | { type: "set"; amount: number; day: string; note: string }
+  | { type: "message"; body: string }
+);
+export type TimelineFilter = "all" | "chat" | "sets";
+
+const userOf = (r: { uid: number; username: string; display_name: string; color: string }): PublicUser => ({
+  id: r.uid,
+  username: r.username,
+  display_name: r.display_name,
+  color: r.color,
+});
+
+/** Logged sets and messages for a challenge, newest first, each with its reactions. */
+export function challengeTimeline(challengeId: number, viewerId: number | undefined, filter: TimelineFilter = "all", limit = 40): TimelineItem[] {
+  const d = db();
+  const sets =
+    filter === "chat"
+      ? []
+      : (d
+          .prepare(
+            `SELECT e.id, e.amount, e.day, e.note, e.created_at, u.id AS uid, u.username, u.display_name, u.color
+             FROM entries e JOIN users u ON u.id = e.user_id WHERE e.challenge_id = ? ORDER BY e.created_at DESC LIMIT ?`,
+          )
+          .all(challengeId, limit) as { id: number; amount: number; day: string; note: string; created_at: number; uid: number; username: string; display_name: string; color: string }[]);
+  const msgs =
+    filter === "sets"
+      ? []
+      : (d
+          .prepare(
+            `SELECT m.id, m.body, m.created_at, u.id AS uid, u.username, u.display_name, u.color
+             FROM messages m JOIN users u ON u.id = m.user_id WHERE m.challenge_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+          )
+          .all(challengeId, limit) as { id: number; body: string; created_at: number; uid: number; username: string; display_name: string; color: string }[]);
+
+  const items: TimelineItem[] = [
+    ...sets.map((r) => ({ type: "set" as const, id: r.id, user: userOf(r), created_at: r.created_at, amount: r.amount, day: r.day, note: r.note, reactions: [] })),
+    ...msgs.map((r) => ({ type: "message" as const, id: r.id, user: userOf(r), created_at: r.created_at, body: r.body, reactions: [] })),
+  ]
+    .sort((a, b) => b.created_at - a.created_at)
+    .slice(0, limit);
+
+  const ids = (t: "set" | "message") => items.filter((i) => i.type === t).map((i) => i.id);
+  const all = reactionsFor("entry", ids("set"), viewerId);
+  const msgR = reactionsFor("message", ids("message"), viewerId);
+  for (const it of items) it.reactions = (it.type === "set" ? all : msgR).get(it.id) ?? [];
+  return items;
+}
+
+function reactionsFor(kind: "entry" | "message", ids: number[], viewerId: number | undefined) {
+  const out = new Map<number, ReactionSummary[]>();
+  if (!ids.length) return out;
   const rows = db()
     .prepare(
-      `SELECT e.id, e.amount, e.day, e.note, e.created_at,
-         u.id AS uid, u.username, u.display_name, u.color,
-         (SELECT COUNT(*) FROM kudos k WHERE k.entry_id = e.id) AS kudos,
-         (SELECT COUNT(*) FROM kudos k WHERE k.entry_id = e.id AND k.user_id = ?) AS mine
-       FROM entries e JOIN users u ON u.id = e.user_id
-       WHERE e.challenge_id = ? ORDER BY e.created_at DESC LIMIT ?`,
+      `SELECT r.target_id, r.emoji, COUNT(*) AS n, MAX(r.user_id = ?) AS mine, GROUP_CONCAT(u.display_name, ', ') AS names
+       FROM reactions r JOIN users u ON u.id = r.user_id
+       WHERE r.kind = ? AND r.target_id IN (${ids.map(() => "?").join(",")})
+       GROUP BY r.target_id, r.emoji`,
     )
-    .all(viewerId ?? -1, challengeId, limit) as FeedRow[];
-  return toFeed(rows);
+    .all(viewerId ?? -1, kind, ...ids) as { target_id: number; emoji: string; n: number; mine: number; names: string }[];
+  const order = (e: string) => {
+    const i = (REACTIONS as readonly string[]).indexOf(e);
+    return i < 0 ? 99 : i;
+  };
+  for (const r of rows) {
+    const list = out.get(r.target_id) ?? [];
+    list.push({ emoji: r.emoji, count: r.n, mine: !!r.mine, names: r.names });
+    out.set(r.target_id, list);
+  }
+  for (const list of out.values()) list.sort((a, b) => order(a.emoji) - order(b.emoji));
+  return out;
 }
 
 /** Recent activity across every challenge the viewer belongs to. */
@@ -215,14 +275,12 @@ export function friendsFeed(viewerId: number, limit = 20) {
     .prepare(
       `SELECT e.id, e.amount, e.day, e.note, e.created_at,
          u.id AS uid, u.username, u.display_name, u.color,
-         c.title AS challenge_title, c.slug AS challenge_slug, c.unit, c.exercise,
-         (SELECT COUNT(*) FROM kudos k WHERE k.entry_id = e.id) AS kudos,
-         (SELECT COUNT(*) FROM kudos k WHERE k.entry_id = e.id AND k.user_id = ?) AS mine
+         c.title AS challenge_title, c.slug AS challenge_slug, c.unit, c.exercise
        FROM entries e JOIN users u ON u.id = e.user_id JOIN challenges c ON c.id = e.challenge_id
        WHERE e.challenge_id IN (SELECT challenge_id FROM challenge_members WHERE user_id = ?)
        ORDER BY e.created_at DESC LIMIT ?`,
     )
-    .all(viewerId, viewerId, limit) as FeedRow[];
+    .all(viewerId, limit) as FeedRow[];
   return toFeed(rows);
 }
 
