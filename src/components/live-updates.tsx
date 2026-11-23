@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
  * the watched challenges, the server pushes a ping and we re-render from fresh data.
  * Client-side state (what you've typed, open menus) is preserved.
  */
-export function LiveUpdates({ ids, inviteKey }: { ids: number[]; inviteKey?: string }) {
+export function LiveUpdates({ ids, inviteKey, renderedAt }: { ids: number[]; inviteKey?: string; renderedAt: number }) {
   const router = useRouter();
   const [down, setDown] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -20,7 +20,7 @@ export function LiveUpdates({ ids, inviteKey }: { ids: number[]; inviteKey?: str
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => router.refresh(), 150); // batch bursts of logs
     };
-    const qs = new URLSearchParams({ ids: idKey, ...(inviteKey ? { k: inviteKey } : {}) });
+    const qs = new URLSearchParams({ ids: idKey, since: String(renderedAt), ...(inviteKey ? { k: inviteKey } : {}) });
     let lostConnection = false;
     let es: EventSource | null = null;
 
@@ -56,7 +56,7 @@ export function LiveUpdates({ ids, inviteKey }: { ids: number[]; inviteKey?: str
       es?.close();
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [idKey, inviteKey, router]);
+  }, [idKey, inviteKey, renderedAt, router]);
 
   if (!down) return null;
   return (

@@ -151,7 +151,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-8">
-      <LiveUpdates ids={[c.id]} inviteKey={k} />
+      <LiveUpdates ids={[c.id]} inviteKey={k} renderedAt={Date.now()} />
       {/* ---------- Header ---------- */}
       <header>
         <div className="flex flex-wrap items-center gap-2">

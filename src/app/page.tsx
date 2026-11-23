@@ -71,7 +71,7 @@ async function Dashboard({ user }: { user: User }) {
 
   return (
     <div className="space-y-10">
-      <LiveUpdates ids={[...active, ...upcoming].map((c) => c.id)} />
+      <LiveUpdates ids={[...active, ...upcoming].map((c) => c.id)} renderedAt={Date.now()} />
       <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
         <div>
           <div className="eyebrow">{dateLine}</div>

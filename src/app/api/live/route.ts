@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { onChallengeChange } from "@/lib/live";
+import { changedSince, onChallengeChange } from "@/lib/live";
 import { canViewChallenge, getChallengeById } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +37,9 @@ export async function GET(req: Request) {
         }
       };
       send("retry: 3000\n: connected\n\n");
+      // Catch up on anything that changed between the page render and this connection.
+      const since = Number(url.searchParams.get("since")) || 0;
+      for (const id of ids) if (since && changedSince(id, since)) send(`data: ${id}\n\n`);
       const off = onChallengeChange((id) => {
         if (ids.has(id)) send(`data: ${id}\n\n`);
       });
