@@ -87,7 +87,6 @@ const sample = (arr, n) => {
   return out;
 };
 const code = (len = 10) => Array.from({ length: len }, () => pick("abcdefghijkmnopqrstuvwxyz23456789")).join("");
-const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 
 const DAY = 86_400_000;
 const localDay = (d) =>
@@ -242,7 +241,7 @@ const made = tx(() =>
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        `${slugify(c.title)}-${code(4)}`, c.title, "", c.exercise, c.unit, c.goal, c.target, start, end,
+        crypto.randomBytes(4).toString("hex"), c.title, "", c.exercise, c.unit, c.goal, c.target, start, end,
         c.vis, code(), owner.id, teamId, c.quick, dayAtTime(start, 8) - 3 * DAY, c.battle ? "battle" : c.league ? "teams" : "standard", c.battle?.scoring ?? c.league?.scoring ?? "total",
       );
     const cid = Number(res.lastInsertRowid);

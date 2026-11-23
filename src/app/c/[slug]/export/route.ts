@@ -1,6 +1,6 @@
 import { getCurrentUser, getTimeZone, getToday } from "@/lib/auth";
 import { eachDay } from "@/lib/dates";
-import { canViewChallenge, challengeEntries, challengeMembers, challengeSquads, getChallengeBySlug } from "@/lib/queries";
+import { canViewChallenge, challengeSlugForAlias, challengeEntries, challengeMembers, challengeSquads, getChallengeBySlug } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const url = new URL(req.url);
   const type = url.searchParams.get("type") === "sets" ? "sets" : "daily";
-  const c = getChallengeBySlug(slug);
+  const c = getChallengeBySlug(slug) ?? (challengeSlugForAlias(slug) ? getChallengeBySlug(challengeSlugForAlias(slug)!) : undefined);
   const user = await getCurrentUser();
   if (!c || !canViewChallenge(c, user?.id, url.searchParams.get("k"))) return new Response("Not found", { status: 404 });
 

@@ -148,6 +148,17 @@ export const MIGRATIONS = [
     SELECT 'entry', entry_id, user_id, '👏', created_at FROM kudos;
   DROP TABLE kudos;
   `,
+
+  // v6: challenge URLs become permanent random ids (renaming no longer leaves the
+  // old name in the link). Old addresses are kept as aliases and redirect.
+  `
+  CREATE TABLE challenge_aliases (
+    slug TEXT PRIMARY KEY,
+    challenge_id INTEGER NOT NULL REFERENCES challenges(id) ON DELETE CASCADE
+  );
+  INSERT INTO challenge_aliases (slug, challenge_id) SELECT slug, id FROM challenges;
+  UPDATE challenges SET slug = lower(hex(randomblob(4)));
+  `,
 ];
 
 /**

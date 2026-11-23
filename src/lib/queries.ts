@@ -60,6 +60,14 @@ export function getChallengeBySlug(slug: string) {
   return db().prepare("SELECT * FROM challenges WHERE slug = ?").get(slug) as Challenge | undefined;
 }
 
+/** Old (name-based) challenge addresses map to the current one. */
+export function challengeSlugForAlias(slug: string) {
+  const r = db()
+    .prepare("SELECT c.slug FROM challenge_aliases a JOIN challenges c ON c.id = a.challenge_id WHERE a.slug = ?")
+    .get(slug) as { slug: string } | undefined;
+  return r?.slug;
+}
+
 export function getChallengeById(id: number) {
   return db().prepare("SELECT * FROM challenges WHERE id = ?").get(id) as Challenge | undefined;
 }

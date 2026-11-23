@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getCurrentUser, getToday } from "@/lib/auth";
 import {
@@ -9,6 +9,7 @@ import {
   type TimelineFilter,
   challengeMembers,
   challengeSquads,
+  challengeSlugForAlias,
   getChallengeBySlug,
   streaksFor,
   teamsForUser,
@@ -58,6 +59,13 @@ export default async function ChallengePage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { k, board, feed: feedParam } = await searchParams;
   const c = getChallengeBySlug(slug);
+  if (!c) {
+    const current = challengeSlugForAlias(slug);
+    if (current) {
+      const q = new URLSearchParams(Object.entries({ k, board, feed: feedParam }).filter(([, v]) => v) as [string, string][]).toString();
+      permanentRedirect(`/c/${current}${q ? `?${q}` : ""}`);
+    }
+  }
   const user = await getCurrentUser();
   if (!c || !canViewChallenge(c, user?.id, k)) notFound();
   const feedFilter: TimelineFilter = feedParam === "chat" || feedParam === "sets" ? feedParam : "all";

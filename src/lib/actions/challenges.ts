@@ -6,7 +6,8 @@ import { z } from "zod";
 import { db, now } from "../db";
 import { getCurrentUser, getToday, rateLimit, requireUser } from "../auth";
 import { addDays, diffDays, isDay } from "../dates";
-import { randomCode, slugify } from "../ids";
+import crypto from "node:crypto";
+import { randomCode } from "../ids";
 import { canViewChallenge, getChallengeById, isChallengeMember, isTeamMember, streaksFor } from "../queries";
 import { tierFor } from "../streaks";
 import type { FormState } from "./auth";
@@ -98,11 +99,12 @@ function syncSquads(challengeId: number, squads: Parsed["squads"]) {
   }
 }
 
-function uniqueSlug(title: string) {
-  const base = slugify(title);
+/** A permanent random id for the URL, so renaming the challenge never changes its link. */
+function uniqueSlug(_title: string) {
   for (;;) {
-    const slug = `${base}-${randomCode(4)}`;
-    if (!db().prepare("SELECT 1 FROM challenges WHERE slug = ?").get(slug)) return slug;
+    const slug = crypto.randomBytes(4).toString("hex");
+    const taken = db().prepare("SELECT 1 FROM challenges WHERE slug = ? UNION SELECT 1 FROM challenge_aliases WHERE slug = ?").get(slug, slug);
+    if (!taken) return slug;
   }
 }
 

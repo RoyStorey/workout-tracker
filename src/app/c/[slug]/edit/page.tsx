@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getToday, requireUser } from "@/lib/auth";
-import { challengeSquads, getChallengeBySlug, teamsForUser } from "@/lib/queries";
+import { challengeSlugForAlias, challengeSquads, getChallengeBySlug, teamsForUser } from "@/lib/queries";
 import { deleteChallenge } from "@/lib/actions/challenges";
 import { ChallengeForm } from "@/components/challenge-form";
 import { ConfirmButton } from "@/components/forms";
@@ -13,6 +13,7 @@ export default async function EditChallengePage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const user = await requireUser(`/c/${slug}/edit`);
   const c = getChallengeBySlug(slug);
+  if (!c && challengeSlugForAlias(slug)) permanentRedirect(`/c/${challengeSlugForAlias(slug)}/edit`);
   if (!c || c.owner_id !== user.id) notFound();
   const teams = teamsForUser(user.id).map((t) => ({ id: t.id, name: t.name }));
   return (
