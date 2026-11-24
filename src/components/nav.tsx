@@ -56,6 +56,7 @@ export function Nav({ user, streak }: { user: User | null; streak?: number }) {
                   </div>
                   <MenuLink href={`/u/${user.username}`}>Profile</MenuLink>
                   <MenuLink href="/settings">Settings</MenuLink>
+                  {user.is_admin ? <MenuLink href="/admin">Admin</MenuLink> : null}
                   <ThemeToggle />
                   <form action={logout} className="border-t border-line pt-1">
                     <button className="w-full rounded px-3 py-2 text-left text-sm text-muted hover:bg-surface-2 hover:text-ink">Log out</button>

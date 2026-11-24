@@ -159,6 +159,20 @@ export const MIGRATIONS = [
   INSERT INTO challenge_aliases (slug, challenge_id) SELECT slug, id FROM challenges;
   UPDATE challenges SET slug = lower(hex(randomblob(4)));
   `,
+
+  // v7: administrators, forced password change after an admin reset, and an audit log.
+  `
+  ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE admin_log (
+    id INTEGER PRIMARY KEY,
+    admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    admin_name TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target_name TEXT,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 /**

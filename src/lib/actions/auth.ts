@@ -13,6 +13,7 @@ import {
   verifyPassword,
 } from "../auth";
 import { AVATAR_COLORS } from "../colors";
+import { deleteUserCascade } from "../accounts";
 import { revalidatePath } from "next/cache";
 
 export type FormState = { error?: string; ok?: string } | undefined;
@@ -94,7 +95,7 @@ export async function changePassword(_: FormState, form: FormData): Promise<Form
   const parsed = password.safeParse(form.get("password"));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (form.get("confirm") !== parsed.data) return { error: "Passwords don't match" };
-  db().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(parsed.data), user.id);
+  db().prepare("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?").run(hashPassword(parsed.data), user.id);
   // Sign out other devices, keep this one.
   db().prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
   await createSession(user.id);
@@ -105,29 +106,7 @@ export async function deleteAccount(_: FormState, form: FormData): Promise<FormS
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (String(form.get("confirm_username") ?? "") !== user.username) return { error: "Type your username exactly to confirm" };
-  const d = db();
-  d.transaction(() => {
-    // Hand owned teams to the longest-standing other member, else delete the team.
-    const teams = d.prepare("SELECT id FROM teams WHERE owner_id = ?").all(user.id) as { id: number }[];
-    for (const t of teams) {
-      const heir = d
-        .prepare("SELECT user_id FROM team_members WHERE team_id = ? AND user_id != ? ORDER BY joined_at LIMIT 1")
-        .get(t.id, user.id) as { user_id: number } | undefined;
-      if (heir) {
-        d.prepare("UPDATE teams SET owner_id = ? WHERE id = ?").run(heir.user_id, t.id);
-        d.prepare("UPDATE team_members SET role = 'owner' WHERE team_id = ? AND user_id = ?").run(t.id, heir.user_id);
-      } else d.prepare("DELETE FROM teams WHERE id = ?").run(t.id);
-    }
-    const chals = d.prepare("SELECT id FROM challenges WHERE owner_id = ?").all(user.id) as { id: number }[];
-    for (const c of chals) {
-      const heir = d
-        .prepare("SELECT user_id FROM challenge_members WHERE challenge_id = ? AND user_id != ? ORDER BY joined_at LIMIT 1")
-        .get(c.id, user.id) as { user_id: number } | undefined;
-      if (heir) d.prepare("UPDATE challenges SET owner_id = ? WHERE id = ?").run(heir.user_id, c.id);
-      else d.prepare("DELETE FROM challenges WHERE id = ?").run(c.id);
-    }
-    d.prepare("DELETE FROM users WHERE id = ?").run(user.id);
-  })();
+  deleteUserCascade(user.id);
   await destroySession();
   redirect("/");
 }

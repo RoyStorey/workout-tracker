@@ -61,6 +61,27 @@ npm run seed -- --clear               # removes all demo data; real accounts are
 
 Demo accounts all use the password `password`. In PowerShell, quote the dashes: `npm run seed '--' --clear`.
 
+### Admins
+
+Make yourself the first admin from the server's terminal (in PowerShell, quote the dashes: `npm run admin '--' add yourname`):
+
+```bash
+npm run admin -- add <username>
+npm run admin -- list
+npm run admin -- remove <username>
+```
+
+Admins get an **Admin** link in the account menu, which opens `/admin`. From there they can:
+
+- see site totals
+- search everyone
+- reset a password: auto-generate an easy one like `maple-tiger-4821` or type one; the person is signed out everywhere and prompted to pick their own
+- sign someone out everywhere
+- make or remove admins
+- delete accounts
+
+Every action is recorded in the admin log. Non-admins get a 404 at `/admin`.
+
 ### Admin chores
 
 ```bash

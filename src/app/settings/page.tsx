@@ -12,7 +12,7 @@ export default async function SettingsPage() {
         <h2 className="mb-4 font-semibold">Profile</h2>
         <ProfileForm user={user} />
       </section>
-      <section className="card p-5">
+      <section id="password" className="card scroll-mt-20 p-5">
         <h2 className="mb-4 font-semibold">Password</h2>
         <PasswordForm />
       </section>

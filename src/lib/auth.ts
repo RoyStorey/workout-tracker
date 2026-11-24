@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db, now } from "./db";
 import { isValidTz, todayIn } from "./dates";
 
@@ -17,6 +17,8 @@ export type User = {
   color: string;
   bio: string;
   created_at: number;
+  is_admin: number;
+  must_change_password: number;
 };
 
 // ---------- passwords ----------
@@ -75,7 +77,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   const id = hashToken(token);
   const row = db()
     .prepare(
-      `SELECT s.expires_at, u.id, u.username, u.display_name, u.color, u.bio, u.created_at
+      `SELECT s.expires_at, u.id, u.username, u.display_name, u.color, u.bio, u.created_at, u.is_admin, u.must_change_password
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`,
     )
     .get(id) as (User & { expires_at: number }) | undefined;
@@ -95,6 +97,13 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 export async function requireUser(next?: string): Promise<User> {
   const user = await getCurrentUser();
   if (!user) redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  return user;
+}
+
+/** Admin-only pages and actions. Non-admins get a plain 404 so the area isn't advertised. */
+export async function requireAdmin(): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user?.is_admin) notFound();
   return user;
 }
 

@@ -4,6 +4,7 @@ process.removeAllListeners("warning"); // hide node:sqlite's "experimental" noti
 const { DatabaseSync } = await import("node:sqlite");
 import crypto from "node:crypto";
 import path from "node:path";
+import { migrate } from "../src/lib/migrations.mjs";
 
 const [username, password] = process.argv.slice(2);
 if (!username || !password || password.length < 6) {
@@ -12,6 +13,7 @@ if (!username || !password || password.length < 6) {
 }
 const file = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "app.db");
 const db = new DatabaseSync(file);
+migrate(db);
 const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
 if (!user) {
   console.error(`No user named "${username}"`);
@@ -19,7 +21,7 @@ if (!user) {
 }
 const salt = crypto.randomBytes(16);
 const hash = crypto.scryptSync(password, salt, 64);
-db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(
+db.prepare("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?").run(
   `scrypt$${salt.toString("base64")}$${hash.toString("base64")}`,
   user.id,
 );
