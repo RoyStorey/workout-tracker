@@ -29,11 +29,18 @@ export function Stat({ label, value, sub, tone, big }: { label: string; value: R
   );
 }
 
-export function PaceNote({ aheadBy, unit }: { aheadBy: number; unit: string }) {
+/**
+ * Ahead/behind the original schedule: an even split of the goal across every day of the
+ * challenge, counted through yesterday (today's work counts toward you, not against you).
+ */
+export function PaceNote({ aheadBy, unit, perDay }: { aheadBy: number; unit: string; perDay?: number | null }) {
   const ahead = aheadBy >= 0;
   return (
-    <span className={cx("font-semibold", ahead ? "text-good" : "text-bad")}>
-      {ahead ? "▲" : "▼"} {fmtNum(Math.abs(aheadBy), 0)} {unit} {ahead ? "ahead of pace" : "behind pace"}
+    <span
+      className={cx("font-semibold", ahead ? "text-good" : "text-bad")}
+      title={`Compared with the original schedule${perDay ? ` of ${fmtNum(Math.ceil(perDay))} ${unit} a day` : ""}, counted through yesterday.`}
+    >
+      {ahead ? "▲" : "▼"} {fmtNum(Math.abs(aheadBy), 0)} {unit} {ahead ? "ahead of schedule" : "behind schedule"}
     </span>
   );
 }

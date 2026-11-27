@@ -354,7 +354,7 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                     <ProgressBar value={focus.pct ?? 0} className="h-3" />
                     {focus.status === "active" && focus.aheadBy != null && focus.totalDays && (
                       <span
-                        title="Where an even pace would put you"
+                        title="Where the original schedule puts you (an even split of the goal, through yesterday)"
                         className="absolute -top-1 h-5 w-0.5 bg-ink"
                         style={{ left: `${Math.min(100, ((focus.total - focus.aheadBy) / focus.target) * 100)}%` }}
                       />
@@ -377,8 +377,8 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                     <>Finished {fmtNum(focus.remaining!)} short.</>
                   ) : (
                     <>
-                      {focus.aheadBy != null && <PaceNote aheadBy={focus.aheadBy} unit={unit} />} · <b className="text-ink">{fmtNum(focus.remaining!)}</b> to go ·{" "}
-                      <b className="text-ink">{fmtNum(Math.ceil(focus.perDayNeeded ?? 0))}</b> a day finishes it
+                      {focus.aheadBy != null && <PaceNote aheadBy={focus.aheadBy} unit={unit} perDay={focus.basePace} />} · <b className="text-ink">{fmtNum(focus.remaining!)}</b> to go ·{" "}
+                      <b className="text-ink">{fmtNum(Math.ceil(focus.perDayNeeded ?? 0))}</b> a day from here finishes on time
                     </>
                   )}
                 </p>
@@ -395,10 +395,10 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                       if (left == null) return null;
                       return left > 0 ? (
                         <span className="text-muted">
-                          <b className="tnum text-ink">{fmtNum(Math.ceil(left))}</b> more keeps {shared ? "the team" : "you"} on pace
+                          <b className="tnum text-ink">{fmtNum(Math.ceil(left))}</b> more today to stay on track to finish
                         </span>
                       ) : (
-                        <span className="font-semibold text-good">On pace for today</span>
+                        <span className="font-semibold text-good">Today&apos;s share done</span>
                       );
                     })()}
                   </div>
@@ -504,7 +504,8 @@ export default async function ChallengePage({ params, searchParams }: Props) {
                     unit={unit}
                     today={today}
                     dailyRef={focus.perDayNeeded ?? focus.basePace}
-                    title={shared ? "Team total vs. even pace" : mine ? "Your total vs. even pace" : "Combined total"}
+                    title={shared ? "Team total vs. schedule" : mine ? "Your total vs. schedule" : "Combined total"}
+                    dailyRefLabel={focus.perDayNeeded != null ? "Needed per day to finish" : "Daily schedule"}
                   />
                 )}
               </div>
@@ -675,8 +676,8 @@ function NumbersGrid({ s, unit }: { s: Stats; unit: string }) {
     ["Streak", `${s.currentStreak}d`, `longest ${s.longestStreak}d`],
     ["Sets", fmtNum(s.sets), `avg ${fmtNum(s.avgSet)} ${unit}`],
     ["Active days", fmtNum(s.activeDays), `of ${fmtNum(s.daysElapsed)} so far`],
-    ...(s.projectedTotal != null ? ([["Projected", fmtCompact(Math.round(s.projectedTotal)), "at this pace"]] as [string, React.ReactNode, React.ReactNode][]) : []),
-    ...(s.finishDay && !s.reached && s.target ? ([["Finish date", fmtDay(s.finishDay), "at this pace"]] as [string, React.ReactNode, React.ReactNode][]) : []),
+    ...(s.projectedTotal != null ? ([["Projected", fmtCompact(Math.round(s.projectedTotal)), "at your current rate"]] as [string, React.ReactNode, React.ReactNode][]) : []),
+    ...(s.finishDay && !s.reached && s.target ? ([["Finish date", fmtDay(s.finishDay), "at your current rate"]] as [string, React.ReactNode, React.ReactNode][]) : []),
   ];
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4">

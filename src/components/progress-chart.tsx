@@ -33,6 +33,7 @@ export function ProgressChart({
   unit,
   today,
   dailyRef,
+  dailyRefLabel = "Daily schedule",
   title = "Progress",
 }: {
   series: DayPoint[];
@@ -40,6 +41,7 @@ export function ProgressChart({
   unit: string;
   today: string;
   dailyRef: number | null;
+  dailyRefLabel?: string;
   title?: string;
 }) {
   const [ref, width] = useWidth<HTMLDivElement>();
@@ -101,7 +103,7 @@ export function ProgressChart({
         <h3 className="text-sm font-semibold">{title}</h3>
         <div className="flex items-center gap-4 text-xs text-muted">
           <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-series-1" /> Actual</span>
-          {hasPace && <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--pace)]" /> Even pace</span>}
+          {hasPace && <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--pace)]" /> Schedule</span>}
         </div>
       </div>
       <div ref={ref} className="relative select-none" onPointerLeave={() => setHover(null)}>
@@ -144,7 +146,7 @@ export function ProgressChart({
             <div className="mb-1 mt-3 flex items-center justify-between text-xs text-muted">
               <span>Per day</span>
               {dailyRef != null && dailyRef > 0 && (
-                <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--pace)]" /> Daily pace {fmtNum(Math.ceil(dailyRef))}</span>
+                <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[var(--pace)]" /> {dailyRefLabel} {fmtNum(Math.ceil(dailyRef))}</span>
               )}
             </div>
             <svg width={width} height={H2} role="img" aria-label={`${unit} per day`}>
@@ -188,7 +190,7 @@ export function ProgressChart({
                     <Row k="Running total" v={fmtNum(h.cumulative)} />
                   </>
                 )}
-                {h.pace != null && <Row k="Even pace" v={fmtNum(h.pace, 0)} />}
+                {h.pace != null && <Row k="Schedule" v={fmtNum(h.pace, 0)} />}
               </div>
             )}
           </>
@@ -199,7 +201,7 @@ export function ProgressChart({
         <div className="mt-2 max-h-64 overflow-auto">
           <table className="tnum w-full text-left text-xs">
             <thead className="text-muted">
-              <tr><th className="py-1">Day</th><th>Amount</th><th>Total</th>{hasPace && <th>Pace</th>}</tr>
+              <tr><th className="py-1">Day</th><th>Amount</th><th>Total</th>{hasPace && <th>Schedule</th>}</tr>
             </thead>
             <tbody>
               {series.filter((p) => p.cumulative != null).map((p) => (

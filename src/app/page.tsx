@@ -195,11 +195,11 @@ async function Dashboard({ user }: { user: User }) {
                           <span className="font-semibold text-good">Goal hit. Keep stacking.</span>
                         ) : left != null && left > 0 ? (
                           <span className="text-muted">
-                            <b className="tnum text-ink">{fmtNum(Math.ceil(left))}</b> more today keeps {shared ? "the team" : "you"} on pace
-                            {stats.aheadBy != null && <> · <PaceNote aheadBy={stats.aheadBy} unit="" /></>}
+                            <b className="tnum text-ink">{fmtNum(Math.ceil(left))}</b> more today to stay on track
+                            {stats.aheadBy != null && <> · <PaceNote aheadBy={stats.aheadBy} unit="" perDay={stats.basePace} /></>}
                           </span>
                         ) : (
-                          <span className="font-semibold text-good">On pace for today</span>
+                          <span className="font-semibold text-good">Today&apos;s share done</span>
                         )}
                       </div>
                     </>
